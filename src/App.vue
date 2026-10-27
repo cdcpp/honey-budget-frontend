@@ -8,7 +8,7 @@ import BalanceSection from './components/BalanceSection.vue'
 import BudgetTable from './components/BudgetTable.vue'
 import AccountClassificationView from './components/account-hierarchy/AccountClassificationView.vue'
 
-const currentTab = ref('currentTab')
+const currentTab = ref('budget')
 
 const {
   balanceList,

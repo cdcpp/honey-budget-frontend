@@ -286,11 +286,6 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <!-- 선택된 카테고리 잔액 합계 표시 -->
-            <div v-if="selectedCategory"
-              class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
-            </div>
-
             <!-- 등록 및 삭제 버튼 그룹 -->
             <div class="flex items-center gap-1.5">
               <button @click="openModal('account-create')" :disabled="!selectedCategory" :class="[
@@ -361,14 +356,6 @@
                   <span class="text-slate-300">·</span>
                   <span class="font-mono text-slate-600">{{ acc.accountNumber }}</span>
                 </p>
-              </div>
-
-              <!-- 잔액 표시 -->
-              <div class="text-right">
-                <div class="text-lg font-black text-slate-900 tracking-tight">
-                  {{ (Number(acc.balance) || 0).toLocaleString() }}
-                  <span class="text-xs font-normal text-slate-500">원</span>
-                </div>
               </div>
             </div>
 
@@ -446,8 +433,6 @@ const {
   addAccount,
   updateAccount,
   removeAccount,
-  depositAccount,
-  withdrawAccount,
   refresh
 } = useAccountClassification()
 
@@ -511,12 +496,6 @@ const handleModalSubmit = async (formData) => {
     } else if (mode === 'account-edit') {
       await updateAccount(data.id, formData)
       showToast('계좌 정보가 수정되었습니다.')
-    } else if (mode === 'account-deposit') {
-      await depositAccount(formData.accountId, formData.amount)
-      showToast(`${formData.amount.toLocaleString()}원이 입금되었습니다.`)
-    } else if (mode === 'account-withdraw') {
-      await withdrawAccount(formData.accountId, formData.amount)
-      showToast(`${formData.amount.toLocaleString()}원이 출금되었습니다.`)
     }
     closeModal()
   } catch (err) {
