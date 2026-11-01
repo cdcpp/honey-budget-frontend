@@ -3,7 +3,6 @@ import { ref } from 'vue'
 
 const props = defineProps({
   onReset: Function,
-  onResetSample: Function,
   onExportJson: Function,
   onImportJson: Function,
   onExportCsv: Function
@@ -48,9 +47,6 @@ const handleFileChange = (e) => {
       </button>
       <button @click="triggerFileInput" title="JSON 복원" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shadow-sm cursor-pointer">
         <i class="fa-solid fa-upload"></i> 불러오기
-      </button>
-      <button @click="onResetSample" title="샘플 복원" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors shadow-sm cursor-pointer">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> 예시 복원
       </button>
       <button @click="onReset" title="0원 초기화" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors shadow-sm cursor-pointer">
         <i class="fa-solid fa-rotate-left"></i> 0원 초기화

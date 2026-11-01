@@ -1,43 +1,23 @@
 <script setup>
+/**
+ * @file App.vue
+ * @description 애플리케이션 루트 컴포넌트
+ * 
+ * 백엔드 개발자 참고 (Spring DispatcherServlet & Front Controller 비유):
+ * - 상단 탭 메뉴(currentTab)에 따라 3대 핵심 도메인 화면을 조건부 렌더링(Routing)합니다.
+ * 
+ * 도메인 뷰 구성:
+ * 1. BudgetPlannerView        : 월간 예산 플래너 (AccountYearMonth 연동 1~12월 명세표)
+ * 2. MonthlyTransactionsView  : 월별 소비내역 (AccountTransaction 연동 생활비/고정비/차량비)
+ * 3. AccountClassificationView: 카테고리 관리 (CategoryGroup -> Category -> Account 3계층 관리)
+ */
 import { ref } from 'vue'
-import { useBudget } from './composables/useBudget'
-import AppHeader from './components/AppHeader.vue'
-import SummaryCards from './components/SummaryCards.vue'
-import GuideSection from './components/GuideSection.vue'
-import BalanceSection from './components/BalanceSection.vue'
-import BudgetTable from './components/BudgetTable.vue'
+import BudgetPlannerView from './components/budget/BudgetPlannerView.vue'
+import MonthlyTransactionsView from './components/transactions/MonthlyTransactionsView.vue'
 import AccountClassificationView from './components/account-hierarchy/AccountClassificationView.vue'
 
+// 기본 활성화 탭: 'budget' | 'transactions' | 'account-hierarchy'
 const currentTab = ref('budget')
-
-const {
-  balanceList,
-  incomeRows,
-  savingRows,
-  expenseRows,
-  totalBalance,
-  totalIncomeByMonth,
-  totalSavingsByMonth,
-  totalExpensesByMonth,
-  netBalanceByMonth,
-  annualIncomeTotal,
-  annualSavingsTotal,
-  annualExpensesTotal,
-  annualNetTotal,
-  getRowTotal,
-  addBalanceItem,
-  removeBalanceItem,
-  addRow,
-  removeRow,
-  fillRowAcrossMonths,
-  resetToZero,
-  resetToDefaultSample,
-  exportToJson,
-  importFromJson,
-  exportToCsv,
-  formatNumber,
-  formatCurrency
-} = useBudget()
 </script>
 
 <template>
@@ -48,6 +28,7 @@ const {
       <nav
         class="flex items-center justify-between bg-white px-4 sm:px-6 py-2.5 rounded-2xl shadow-sm border border-slate-200">
         <div class="flex items-center gap-1.5 sm:gap-2">
+          <!-- TAB 1: 월간 예산 플래너 -->
           <button @click="currentTab = 'budget'" :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer',
             currentTab === 'budget'
@@ -58,6 +39,18 @@ const {
             <span>월간 예산 플래너</span>
           </button>
 
+          <!-- TAB 2: 월별 소비내역 -->
+          <button @click="currentTab = 'transactions'" :class="[
+            'px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer',
+            currentTab === 'transactions'
+              ? 'bg-rose-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          ]">
+            <i class="fa-solid fa-receipt"></i>
+            <span>월별 소비내역</span>
+          </button>
+
+          <!-- TAB 3: 카테고리 관리 -->
           <button @click="currentTab = 'account-hierarchy'" :class="[
             'px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer',
             currentTab === 'account-hierarchy'
@@ -66,9 +59,6 @@ const {
           ]">
             <i class="fa-solid fa-sitemap"></i>
             <span>카테고리 관리</span>
-            <span class="text-[10px] px-1.5 py-0.2 rounded-full"
-              :class="currentTab === 'account-hierarchy' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'">
-            </span>
           </button>
         </div>
 
@@ -78,32 +68,17 @@ const {
         </div>
       </nav>
 
-      <!-- VIEW 1: Budget Planner -->
-      <div v-show="currentTab === 'budget'" class="space-y-6">
-        <AppHeader :on-reset="resetToZero" :on-reset-sample="resetToDefaultSample" :on-export-json="exportToJson"
-          :on-import-json="importFromJson" :on-export-csv="exportToCsv" />
-
-        <SummaryCards :total-balance="totalBalance" :annual-income="annualIncomeTotal"
-          :annual-savings="annualSavingsTotal" :annual-expenses="annualExpensesTotal" :annual-net="annualNetTotal"
-          :format-currency="formatCurrency" />
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          <GuideSection class="lg:col-span-2 h-full" />
-          <BalanceSection class="h-full" :balance-list="balanceList" :total-balance="totalBalance"
-            :format-currency="formatCurrency" :on-add-balance-item="addBalanceItem"
-            :on-remove-balance-item="removeBalanceItem" />
-        </div>
-
-        <BudgetTable :income-rows="incomeRows" :saving-rows="savingRows" :expense-rows="expenseRows"
-          :total-income-by-month="totalIncomeByMonth" :total-savings-by-month="totalSavingsByMonth"
-          :total-expenses-by-month="totalExpensesByMonth" :net-balance-by-month="netBalanceByMonth"
-          :annual-income-total="annualIncomeTotal" :annual-savings-total="annualSavingsTotal"
-          :annual-expenses-total="annualExpensesTotal" :annual-net-total="annualNetTotal" :get-row-total="getRowTotal"
-          :add-row="addRow" :remove-row="removeRow" :fill-row-across-months="fillRowAcrossMonths"
-          :format-number="formatNumber" />
+      <!-- 1. 월간 예산 플래너 뷰 -->
+      <div v-show="currentTab === 'budget'">
+        <BudgetPlannerView />
       </div>
 
-      <!-- VIEW 2: Account Classification Hierarchy -->
+      <!-- 2. 월별 소비내역 뷰 -->
+      <div v-show="currentTab === 'transactions'">
+        <MonthlyTransactionsView />
+      </div>
+
+      <!-- 3. 카테고리 관리 뷰 -->
       <div v-show="currentTab === 'account-hierarchy'">
         <AccountClassificationView />
       </div>
