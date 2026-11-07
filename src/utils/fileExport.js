@@ -1,12 +1,16 @@
 /**
- * @file fileExport.js
- * @description 예산 데이터 JSON 백업/복원 및 CSV 내보내기 유틸리티
+ * ============================================================================
+ * @file        fileExport.js
+ * @layer       Utility Layer (파일 입출력 I/O 헬퍼)
+ * @role        브라우저에서 JSON 백업 파일 다운로드/복원 및 엑셀 호환(UTF-8 BOM) CSV 파일 다운로드 처리
+ * ============================================================================
  */
 
 /**
- * 객체 데이터를 JSON 파일로 다운로드
- * @param {object} data
- * @param {string} filename
+ * [JSON 파일 다운로드]
+ * @description 자바스크립트 객체를 들여쓰기(2칸)된 JSON 문자열로 직렬화하여 브라우저 다운로드를 실행합니다.
+ * @param       {object} data - 저장할 데이터 객체
+ * @param       {string} filename - 다운로드될 파일명 (기본값: 'honey-budget-backup.json')
  */
 export const downloadJson = (data, filename = 'honey-budget-backup.json') => {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -19,9 +23,10 @@ export const downloadJson = (data, filename = 'honey-budget-backup.json') => {
 }
 
 /**
- * 업로드된 JSON 파일 텍스트 파싱
- * @param {File} file
- * @returns {Promise<any>}
+ * [업로드된 JSON 파일 읽기 및 파싱]
+ * @description 사용자가 <input type="file">로 선택한 로컬 JSON 파일을 비동기(Promise)로 읽어 객체로 반환합니다.
+ * @param       {File} file - 브라우저 File 객체
+ * @returns     {Promise<any>} 파싱된 JSON 객체
  */
 export const readJsonFile = (file) => {
   return new Promise((resolve, reject) => {
@@ -40,10 +45,11 @@ export const readJsonFile = (file) => {
 }
 
 /**
- * 2차원 배열 데이터를 UTF-8 CSV 파일로 다운로드
- * @param {string[]} headers 헤더 배열
- * @param {(string|number)[][]} rows 행 데이터 배열
- * @param {string} filename 파일명
+ * [엑셀 호환 UTF-8 CSV 파일 다운로드]
+ * @description 한글 깨짐 방지를 위해 UTF-8 BOM('\uFEFF')을 선두에 추가한 뒤 2차원 배열을 CSV로 다운로드합니다.
+ * @param       {string[]} headers - 첫 줄에 들어갈 컬럼 제목 배열
+ * @param       {(string|number)[][]} rows - 각 행의 데이터 2차원 배열
+ * @param       {string} filename - 다운로드될 CSV 파일명
  */
 export const downloadCsv = (headers, rows, filename = 'honey-budget.csv') => {
   const csvContent =
@@ -56,4 +62,3 @@ export const downloadCsv = (headers, rows, filename = 'honey-budget.csv') => {
   a.click()
   URL.revokeObjectURL(url)
 }
-

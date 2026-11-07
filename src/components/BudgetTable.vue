@@ -1,33 +1,55 @@
 <script setup>
-import { ref, computed } from 'vue'
+/**
+ * ============================================================================
+ * @file        BudgetTable.vue
+ * @layer       UI Component (Presentation Layer)
+ * @role        연간 수입/저축/지출 명세표 메인 그리드 테이블 (1월~12월 금액 입력, 소계/총계 자동 표시, 서버 저장)
+ * @parent      BudgetPlannerView.vue
+ * @children    NumberInput.vue
+ * @spring      AccountYearMonthController (/api/v1/account-year-months) 데이터와 1:1 매핑
+ * ============================================================================
+ */
+import { computed } from 'vue'
 import NumberInput from './NumberInput.vue'
 
+// ============================================================================
+// [SECTION 1] Props & Emits (부모 BudgetPlannerView로부터 받는 상태와 이벤트)
+// ============================================================================
 const props = defineProps({
-  sections: { type: Array, required: true },
-  loading: { type: Boolean, default: false },
-  error: { type: String, default: null },
-  year: { type: Number, required: true },
-  yearLoading: { type: Boolean, default: false },
-  saving: { type: Boolean, default: false },
-  saveError: { type: String, default: null },
-  saveMessage: { type: String, default: '' },
-  dirtyCount: { type: Number, default: 0 },
-  totalIncomeByMonth: { type: Array, required: true },
-  totalSavingsByMonth: { type: Array, required: true },
-  totalExpensesByMonth: { type: Array, required: true },
-  annualIncomeTotal: { type: Number, required: true },
-  annualSavingsTotal: { type: Number, required: true },
-  annualExpensesTotal: { type: Number, required: true },
-  getRowTotal: { type: Function, required: true },
-  getCategoryMonthTotal: { type: Function, required: true },
-  getCategoryTotal: { type: Function, required: true },
-  fillRowAcrossMonths: { type: Function, required: true },
-  formatNumber: { type: Function, required: true }
+  sections: { type: Array, required: true },            // 3단계 계층 배열 (그룹 -> 카테고리 -> 계좌 행)
+  loading: { type: Boolean, default: false },           // 계층 트리 로딩 중 여부
+  error: { type: String, default: null },               // 계층 조회 에러 메시지
+  year: { type: Number, required: true },               // 현재 선택된 회계연도
+  yearLoading: { type: Boolean, default: false },       // 연도별 금액 조회 중 여부
+  saving: { type: Boolean, default: false },            // '저장' 버튼 처리 중 여부
+  saveError: { type: String, default: null },           // 저장 실패 에러 메시지
+  saveMessage: { type: String, default: '' },           // 저장 성공 안내 메시지
+  dirtyCount: { type: Number, default: 0 },             // 값이 변경된(미저장) 계좌 개수
+  totalIncomeByMonth: { type: Array, required: true },  // 월별 총 수입 (1~12월 배열)
+  totalSavingsByMonth: { type: Array, required: true }, // 월별 총 저축액 (1~12월 배열)
+  totalExpensesByMonth: { type: Array, required: true },// 월별 총 지출 (1~12월 배열)
+  annualIncomeTotal: { type: Number, required: true },  // 연간 총 수입 합계
+  annualSavingsTotal: { type: Number, required: true }, // 연간 총 저축액 합계
+  annualExpensesTotal: { type: Number, required: true },// 연간 총 지출 합계
+  getRowTotal: { type: Function, required: true },      // 개별 계좌 행의 연간 합계 계산 함수
+  getCategoryMonthTotal: { type: Function, required: true }, // 카테고리의 월별 소계 계산 함수
+  getCategoryTotal: { type: Function, required: true }, // 카테고리의 연간 소계 계산 함수
+  fillRowAcrossMonths: { type: Function, required: true },   // 1월 금액을 12개월 전체로 복사하는 함수
+  formatNumber: { type: Function, required: true }      // 숫자 3자리 콤마 포맷팅 함수
 })
 
+/**
+ * 부모(BudgetPlannerView -> useBudget)로 올려보내는 이벤트:
+ * - 'change-year': 회계연도 셀렉트 박스 변경 시 호출
+ * - 'save'       : '저장' 버튼 클릭 시 호출
+ */
 const emit = defineEmits(['change-year', 'save'])
 
-// 현재 연도 기준 앞뒤 5년 + 선택된 연도
+// ============================================================================
+// [SECTION 2] Computed Properties (파생 계산 속성)
+// ============================================================================
+
+/** 회계연도 드롭다운 옵션 배열 (현재 연도 기준 전후 5년, 내림차순 정렬) */
 const yearOptions = computed(() => {
   const current = new Date().getFullYear()
   const years = new Set([props.year])
@@ -35,77 +57,10 @@ const yearOptions = computed(() => {
   return [...years].sort((a, b) => b - a)
 })
 
-// 구간(수입 / 저축 및 투자 / 지출 / 기타)별 색상 테마
-const themes = {
-  income: {
-    icon: 'fa-solid fa-coins text-indigo-600',
-    sectionRow: 'bg-indigo-50/60 border-y border-indigo-100 text-indigo-950',
-    sectionCell: 'bg-indigo-50/60',
-    categoryRow: 'bg-indigo-50/30 text-indigo-900',
-    categoryCell: 'bg-indigo-50',
-    categoryTotalCell: 'border-indigo-100',
-    labelCell: 'bg-white shadow-[1px_0_0_#f1f5f9] text-slate-700',
-    fillBtn: 'hover:text-indigo-600 hover:bg-indigo-50',
-    rowTotalCell: 'text-slate-700 bg-slate-50 shadow-[-1px_0_0_#e2e8f0]',
-    totalRow: 'bg-indigo-50/40 border-t border-indigo-100 text-indigo-900',
-    totalLabel: 'bg-indigo-50/80 shadow-[1px_0_0_#c7d2fe]',
-    totalDot: 'bg-indigo-500',
-    totalMonthCell: 'border-indigo-100',
-    totalAnnualCell: 'border-indigo-200 bg-indigo-100/60 text-indigo-950 shadow-[-1px_0_0_#c7d2fe]'
-  },
-  saving: {
-    icon: 'fa-solid fa-piggy-bank text-amber-600',
-    sectionRow: 'bg-amber-50/70 border-y border-amber-200 text-amber-900',
-    sectionCell: 'bg-amber-50/70',
-    categoryRow: 'bg-amber-50/30 text-amber-900',
-    categoryCell: 'bg-amber-50',
-    categoryTotalCell: 'border-amber-100',
-    labelCell: 'bg-amber-50/30 shadow-[1px_0_0_#fef3c7] text-amber-950',
-    fillBtn: 'hover:text-amber-700 hover:bg-amber-200',
-    rowTotalCell: 'text-amber-950 bg-amber-50/40 shadow-[-1px_0_0_#fde68a]',
-    totalRow: 'bg-amber-100/50 border-t border-amber-200 text-amber-950',
-    totalLabel: 'bg-amber-100/80 shadow-[1px_0_0_#fcd34d]',
-    totalDot: 'bg-amber-500',
-    totalMonthCell: 'border-amber-200',
-    totalAnnualCell: 'border-amber-300 bg-amber-200/60 text-amber-950 shadow-[-1px_0_0_#fcd34d]'
-  },
-  expense: {
-    icon: 'fa-solid fa-receipt text-rose-500',
-    sectionRow: 'bg-slate-100/70 border-y border-slate-200 text-slate-700',
-    sectionCell: 'bg-slate-100/70',
-    categoryRow: 'bg-slate-50 text-slate-700',
-    categoryCell: 'bg-slate-50',
-    categoryTotalCell: 'border-slate-100',
-    labelCell: 'bg-white shadow-[1px_0_0_#f1f5f9] text-slate-700',
-    fillBtn: 'hover:text-rose-600 hover:bg-rose-50',
-    rowTotalCell: 'text-slate-700 bg-slate-50 shadow-[-1px_0_0_#e2e8f0]',
-    totalRow: 'bg-rose-50/40 border-t border-rose-100 text-rose-900',
-    totalLabel: 'bg-rose-50/80 shadow-[1px_0_0_#fecdd3]',
-    totalDot: 'bg-rose-500',
-    totalMonthCell: 'border-rose-100',
-    totalAnnualCell: 'border-rose-200 bg-rose-100/60 text-rose-950 shadow-[-1px_0_0_#fecdd3]'
-  },
-  other: {
-    icon: 'fa-solid fa-folder text-slate-500',
-    sectionRow: 'bg-slate-100/70 border-y border-slate-200 text-slate-700',
-    sectionCell: 'bg-slate-100/70',
-    categoryRow: 'bg-slate-50 text-slate-700',
-    categoryCell: 'bg-slate-50',
-    categoryTotalCell: 'border-slate-100',
-    labelCell: 'bg-white shadow-[1px_0_0_#f1f5f9] text-slate-700',
-    fillBtn: 'hover:text-slate-700 hover:bg-slate-200',
-    rowTotalCell: 'text-slate-700 bg-slate-50 shadow-[-1px_0_0_#e2e8f0]',
-    totalRow: '',
-    totalLabel: '',
-    totalDot: '',
-    totalMonthCell: '',
-    totalAnnualCell: ''
-  }
-}
-
-const themeOf = (type) => themes[type] || themes.other
-
-// 같은 구간 종류의 마지막 그룹 뒤에 합계 행을 표시
+/**
+ * [구간별 총계 행(총 수입 / 총 저축액 / 총 지출) 매핑]
+ * - 동일한 구간 타입(income/saving/expense)의 가장 마지막 그룹 하단에 총계 행을 표시합니다.
+ */
 const totalRows = computed(() => {
   const info = {
     income: { label: '총 수입', months: props.totalIncomeByMonth, annual: props.annualIncomeTotal },
@@ -120,178 +75,193 @@ const totalRows = computed(() => {
   return result
 })
 
+/** 전체 섹션에 등록된 계좌가 최소 1개 이상 있는지 여부 (빈 화면 안내 표시용) */
 const hasAccounts = computed(() =>
   props.sections.some((s) => s.categories.some((c) => c.rows.length > 0))
 )
 </script>
 
 <template>
-  <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-    <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-slate-50/50">
+  <section class="ts-card overflow-hidden" aria-label="연간 수입 저축 지출 명세표">
+    <!-- ================================================================== -->
+    <!-- [UI 영역 1] 테이블 상단 헤더 (회계연도 선택기, 변경 건수, 저장 버튼)     -->
+    <!-- ================================================================== -->
+    <div class="p-5 sm:p-6 border-b border-[#141413]/12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
       <div>
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-table-list text-slate-500"></i> 연간 수입 / 저축 / 지출 명세표
-        </h3>
-        <p class="text-[11px] text-slate-500 mt-0.5">
-          카테고리 관리에 등록된 그룹 &rsaquo; 카테고리 &rsaquo; 계좌 기준으로 표시됩니다. 금액을 수정한 뒤 <b>저장</b> 버튼을 눌러야 서버에 반영됩니다.
-          항목별 1월 금액 입력 후
-          <i class="fa-solid fa-angles-right text-indigo-500 text-[10px]"></i> 버튼을 누르면 12개월 전체에 동일 금액이 자동 채워집니다.
+        <h2 class="text-[18px] font-bold text-[#141413] tracking-tight">
+          연간 수입 / 저축 / 지출 명세표
+        </h2>
+        <p class="text-[13px] text-[#575653] mt-1">
+          카테고리 관리에 등록된 계좌 기준으로 표시됩니다. 1월 금액 입력 후 우측 화살표(&raquo;)를 누르면 12개월 전체에 동일 금액이 채워집니다.
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-          연도
+
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- 회계연도 변경 드롭다운 -->
+        <label class="flex items-center gap-2 text-[13px] font-medium text-[#575653]">
+          <span>회계연도</span>
           <select
             :value="year"
             @change="emit('change-year', Number($event.target.value))"
-            class="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 cursor-pointer"
+            class="ts-input !h-[36px] font-semibold cursor-pointer"
           >
             <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}년</option>
           </select>
         </label>
-        <span v-if="dirtyCount > 0" class="text-[11px] font-semibold text-amber-600">
+
+        <!-- 미저장 변경 계좌 수 표시 -->
+        <span v-if="dirtyCount > 0" class="text-[13px] font-semibold text-[#0a4b49] tabular-nums">
           변경된 계좌 {{ dirtyCount }}개
         </span>
+
+        <!-- 서버 저장 버튼 (변경된 계좌가 있을 때만 활성화) -->
         <button
           @click="emit('save')"
           :disabled="dirtyCount === 0 || saving"
-          :class="[
-            'px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm',
-            dirtyCount > 0 && !saving
-              ? 'text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
-              : 'text-slate-400 bg-slate-100 cursor-not-allowed'
-          ]"
+          class="btn btn--primary"
         >
           <span
             v-if="saving"
-            class="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"
+            class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
           ></span>
-          <i v-else class="fa-solid fa-floppy-disk"></i>
-          저장
+          <span>저장</span>
         </button>
-        <span class="hidden md:inline text-xs text-slate-400 font-medium">단위: 원</span>
+
+        <span class="hidden md:inline text-[13px] text-[#575653]">단위: 원</span>
       </div>
     </div>
 
-    <div v-if="saveError" class="px-5 py-3 text-xs text-rose-600 bg-rose-50 border-b border-rose-100">
-      <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ saveError }}
+    <!-- ================================================================== -->
+    <!-- [UI 영역 2] 저장 결과 / 에러 / 로딩 / 빈 계좌 상태 안내 배너           -->
+    <!-- ================================================================== -->
+    <div v-if="saveError" class="px-6 py-3 text-[13px] text-[#b91c1c] bg-[#fef2f2] border-b border-[#b91c1c]/20">
+      {{ saveError }}
     </div>
-    <div v-else-if="saveMessage" class="px-5 py-3 text-xs text-emerald-700 bg-emerald-50 border-b border-emerald-100">
-      <i class="fa-solid fa-circle-check mr-1"></i> {{ saveMessage }}
-    </div>
-
-    <div v-if="error" class="px-5 py-3 text-xs text-rose-600 bg-rose-50 border-b border-rose-100">
-      <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ error }}
-    </div>
-    <div v-else-if="(loading || yearLoading) && sections.length === 0" class="px-5 py-10 text-center text-xs text-slate-400">
-      카테고리와 계좌를 불러오는 중입니다...
-    </div>
-    <div v-else-if="!hasAccounts" class="px-5 py-10 text-center text-xs text-slate-400">
-      등록된 계좌가 없습니다. '카테고리 관리' 탭에서 그룹, 카테고리, 계좌를 등록해주세요.
+    <div v-else-if="saveMessage" class="px-6 py-3 text-[13px] text-[#0a4b49] bg-[#F7F6F2] border-b border-[#141413]/12 font-medium">
+      {{ saveMessage }}
     </div>
 
+    <div v-if="error" class="px-6 py-3 text-[13px] text-[#b91c1c] bg-[#fef2f2] border-b border-[#b91c1c]/20">
+      {{ error }}
+    </div>
+    <div v-else-if="(loading || yearLoading) && sections.length === 0" class="px-6 py-12 text-center text-[14px] text-[#575653]">
+      카테고리와 계좌 데이터를 불러오는 중입니다...
+    </div>
+    <div v-else-if="!hasAccounts" class="px-6 py-12 text-center text-[14px] text-[#575653]">
+      등록된 계좌가 없습니다. 상단 '카테고리 관리' 탭에서 그룹, 카테고리, 계좌를 먼저 등록하세요.
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- [UI 영역 3] 연간 1~12월 그리드 테이블 (좌측 계좌명 & 우측 합계 고정)    -->
+    <!-- ================================================================== -->
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs border-collapse">
+      <table class="w-full text-left text-[13px] border-collapse">
         <thead>
-          <tr class="bg-slate-100 text-slate-600 font-semibold text-center border-b border-slate-200 select-none">
-            <th class="p-3 w-48 min-w-[190px] sticky left-0 bg-slate-100 z-20 shadow-[1px_0_0_#e2e8f0] text-left">
-              월급 월기준 (+1달)
+          <tr class="bg-[#F7F6F2] text-[#141413] font-semibold text-center border-b border-[#141413]/15 select-none">
+            <th class="p-3 w-52 min-w-[200px] sticky left-0 bg-[#F7F6F2] z-20 shadow-[1px_0_0_rgba(20,20,19,0.12)] text-left">
+              구분 / 계좌명 (+1개월 기준)
             </th>
-            <th v-for="m in 12" :key="m" class="p-2.5 min-w-[95px] border-l border-slate-200">
+            <th v-for="m in 12" :key="m" class="p-2.5 min-w-[96px] border-l border-[#141413]/10 tabular-nums">
               {{ m }}월
             </th>
-            <th class="p-2.5 min-w-[115px] border-l border-slate-300 bg-slate-200/70 text-slate-700 font-bold sticky right-0 z-10 shadow-[-1px_0_0_#cbd5e1]">
+            <th class="p-2.5 min-w-[120px] border-l border-[#141413]/20 bg-[#EFECE6] text-[#141413] font-bold sticky right-0 z-10 shadow-[-1px_0_0_rgba(20,20,19,0.15)]">
               연간 합계
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100 font-mono">
+
+        <tbody class="divide-y divide-[#141413]/8 font-mono tabular-nums">
           <template v-for="section in sections" :key="section.key">
-            <!-- 그룹(구간) 헤더 -->
-            <tr :class="['font-sans font-semibold text-xs', themeOf(section.type).sectionRow]">
-              <td colspan="14" :class="['px-4 py-2 sticky left-0 z-10', themeOf(section.type).sectionCell]">
-                <span class="flex items-center gap-1.5">
-                  <i :class="themeOf(section.type).icon"></i> {{ section.title }}
+            <!-- [행 타입 A] Level 1 대분류 그룹 헤더 (예: 수입, 저축 및 투자, 지출) -->
+            <tr class="font-sans font-bold text-[13px] bg-[#EFECE6] text-[#141413] border-y border-[#141413]/15">
+              <td colspan="14" class="px-4 py-2.5 sticky left-0 z-10 bg-[#EFECE6]">
+                <span class="inline-flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 bg-[#141413] inline-block"></span>
+                  <span>{{ section.title }}</span>
                 </span>
               </td>
             </tr>
 
             <template v-for="cat in section.categories" :key="cat.id">
-              <!-- 카테고리 소제목 + 월별 소계 -->
-              <tr :class="['font-sans font-semibold text-xs', themeOf(section.type).categoryRow]">
-                <td :class="['px-4 py-1.5 sticky left-0 z-10', themeOf(section.type).categoryCell]">
-                  <span class="flex items-center gap-1.5">
-                    <i class="fa-solid fa-angle-right text-[10px] opacity-60"></i> {{ cat.name }}
+              <!-- [행 타입 B] Level 2 중분류 카테고리 소제목 + 월별/연간 카테고리 소계 -->
+              <tr class="font-sans font-semibold text-[13px] bg-[#F7F6F2] text-[#141413]">
+                <td class="px-4 py-2 sticky left-0 z-10 bg-[#F7F6F2] shadow-[1px_0_0_rgba(20,20,19,0.08)]">
+                  <span class="inline-flex items-center gap-1.5 text-[#575653]">
+                    <span>&rsaquo;</span>
+                    <span class="text-[#141413]">{{ cat.name }}</span>
                   </span>
                 </td>
                 <td
                   v-for="m in 12"
                   :key="m"
-                  :class="['p-1.5 text-right border-l font-mono font-medium', themeOf(section.type).categoryTotalCell]"
+                  class="p-2 text-right border-l border-[#141413]/8 font-mono font-medium text-[#575653]"
                 >
                   {{ cat.rows.length ? formatNumber(getCategoryMonthTotal(cat, m - 1)) : '' }}
                 </td>
-                <td :class="['p-1.5 text-right border-l border-slate-200 font-mono sticky right-0 z-10', themeOf(section.type).categoryCell]">
+                <td class="p-2 text-right border-l border-[#141413]/15 font-mono font-semibold text-[#141413] bg-[#F7F6F2] sticky right-0 z-10 shadow-[-1px_0_0_rgba(20,20,19,0.12)]">
                   {{ cat.rows.length ? formatNumber(getCategoryTotal(cat)) : '' }}
                 </td>
               </tr>
 
-              <!-- 계좌 행 -->
+              <!-- [행 타입 C] Level 3 소분류 개별 계좌 1~12월 입력 행 -->
               <tr
                 v-for="row in cat.rows"
                 :key="row.id"
-                class="hover:bg-slate-50/80 transition-colors group"
+                class="bg-white hover:bg-[#F7F6F2]/60 transition-colors group"
               >
-                <td :class="['p-2 pl-7 font-sans font-medium sticky left-0 z-10', themeOf(section.type).labelCell]">
-                  <div class="flex items-center justify-between gap-1">
+                <td class="p-2 pl-7 font-sans font-medium text-[#141413] sticky left-0 z-10 bg-white group-hover:bg-[#F7F6F2] shadow-[1px_0_0_rgba(20,20,19,0.08)]">
+                  <div class="flex items-center justify-between gap-1.5">
                     <span class="truncate">{{ row.label }}</span>
                     <button
                       @click="fillRowAcrossMonths(row, 0)"
-                      title="1월 금액을 12개월 전체에 동일하게 복사"
-                      :class="['opacity-0 group-hover:opacity-100 text-slate-400 px-1 py-0.5 rounded text-[10px] bg-slate-100 transition-all flex items-center gap-0.5 cursor-pointer', themeOf(section.type).fillBtn]"
+                      title="1월 금액을 12개월 전체에 동일하게 채우기"
+                      class="opacity-0 group-hover:opacity-100 text-[#575653] hover:text-[#141413] hover:bg-[#EFECE6] px-1.5 py-0.5 rounded-[4px] text-[13px] font-mono transition-all cursor-pointer shrink-0"
                     >
-                      <i class="fa-solid fa-angles-right"></i>
+                      &raquo;
                     </button>
                   </div>
                 </td>
 
-                <td v-for="(val, cIdx) in row.values" :key="cIdx" class="p-1 border-l border-slate-100">
+                <!-- 1월(cIdx=0) ~ 12월(cIdx=11) 금액 입력 셀 -->
+                <td v-for="(val, cIdx) in row.values" :key="cIdx" class="p-1 border-l border-[#141413]/8">
                   <NumberInput
                     v-model="row.values[cIdx]"
                     placeholder="-"
-                    class-name="py-1 px-1 text-xs"
+                    class-name="py-1 px-1.5 text-[13px] tabular-nums"
                   />
                 </td>
 
-                <td :class="['p-2 text-right border-l border-slate-300 font-semibold sticky right-0 z-10', themeOf(section.type).rowTotalCell]">
+                <!-- 해당 계좌의 1~12월 연간 합계 셀 -->
+                <td class="p-2 text-right border-l border-[#141413]/15 font-semibold text-[#141413] bg-[#F7F6F2]/70 sticky right-0 z-10 shadow-[-1px_0_0_rgba(20,20,19,0.12)]">
                   {{ formatNumber(getRowTotal(row)) }}
                 </td>
               </tr>
 
-              <tr v-if="cat.rows.length === 0" class="text-slate-400 font-sans">
-                <td colspan="14" class="px-4 pl-7 py-1.5 sticky left-0 bg-white text-[11px]">
+              <!-- 카테고리에 속한 계좌가 없을 때의 빈 안내 행 -->
+              <tr v-if="cat.rows.length === 0" class="text-[#575653] font-sans">
+                <td colspan="14" class="px-4 pl-7 py-2 sticky left-0 bg-white text-[13px]">
                   등록된 계좌가 없습니다.
                 </td>
               </tr>
             </template>
 
-            <!-- 구간 합계 -->
+            <!-- [행 타입 D] 구간별 총합계 행 (총 수입 / 총 저축액 / 총 지출) -->
             <tr
               v-if="totalRows[section.key]"
-              :class="['font-sans font-semibold text-xs', themeOf(section.type).totalRow]"
+              class="font-sans font-bold text-[13px] bg-[#F7F6F2] border-y border-[#141413]/25 text-[#141413]"
             >
-              <td :class="['p-2.5 sticky left-0 z-10 flex items-center gap-1.5', themeOf(section.type).totalLabel]">
-                <span :class="['w-1.5 h-1.5 rounded-full', themeOf(section.type).totalDot]"></span>
-                {{ totalRows[section.key].label }}
+              <td class="p-2.5 px-4 sticky left-0 z-10 bg-[#F7F6F2] shadow-[1px_0_0_rgba(20,20,19,0.12)] flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#0a4b49]"></span>
+                <span>{{ totalRows[section.key].label }}</span>
               </td>
               <td
                 v-for="(tot, idx) in totalRows[section.key].months"
                 :key="idx"
-                :class="['p-2 text-right border-l font-mono', themeOf(section.type).totalMonthCell]"
+                class="p-2 text-right border-l border-[#141413]/12 font-mono font-bold text-[#141413]"
               >
                 {{ formatNumber(tot) }}
               </td>
-              <td :class="['p-2.5 text-right border-l font-bold font-mono sticky right-0 z-10', themeOf(section.type).totalAnnualCell]">
+              <td class="p-2.5 text-right border-l border-[#141413]/20 font-bold font-mono bg-[#EFECE6] text-[#141413] sticky right-0 z-10 shadow-[-1px_0_0_rgba(20,20,19,0.15)]">
                 {{ formatNumber(totalRows[section.key].annual) }}
               </td>
             </tr>
@@ -299,5 +269,5 @@ const hasAccounts = computed(() =>
         </tbody>
       </table>
     </div>
-  </div>
+  </section>
 </template>

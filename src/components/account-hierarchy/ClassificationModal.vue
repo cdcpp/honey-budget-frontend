@@ -1,55 +1,52 @@
 <template>
   <div v-if="isOpen"
-    class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+    class="fixed inset-0 z-50 overflow-y-auto bg-[#141413]/45 flex items-center justify-center p-4"
     @click.self="handleClose">
     <div
-      class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform transition-all border border-slate-100 animate-fadeIn"
+      class="ts-card bg-white shadow-lg w-full max-w-lg overflow-hidden"
       role="dialog" aria-modal="true">
       <!-- 모달 헤더 -->
-      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-brand-primary"></span>
+      <div class="px-6 py-4 border-b border-[#141413]/12 flex items-center justify-between bg-[#F7F6F2]">
+        <h3 class="text-[16px] font-bold text-[#141413]">
           {{ modalTitle }}
         </h3>
         <button @click="handleClose"
-          class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
+          class="text-[#575653] hover:text-[#141413] text-[14px] font-medium px-2 py-1 rounded-[4px] hover:bg-[#EFECE6] transition-colors cursor-pointer"
           title="닫기">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          닫기
         </button>
       </div>
 
       <!-- 모달 바디 / 폼 -->
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4">
+      <form @submit.prevent="handleSubmit" class="p-6 space-y-4 text-[13px]">
         <!-- 1. 그룹 등록/수정 폼 -->
         <template v-if="isGroupMode">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              그룹 코드 (자동생성) <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              그룹 코드 (자동생성) <span class="text-[#b91c1c]">*</span>
             </label>
             <input v-model="groupForm.categoryGroupCode" type="text" maxlength="10" required
               placeholder="예: 100(수입), 200(지출), 300(투자)" readonly
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none uppercase transition-all" />
+              class="w-full ts-input font-mono bg-[#F7F6F2]" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              그룹명 (최대 10자) <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              그룹명 (최대 10자) <span class="text-[#b91c1c]">*</span>
             </label>
             <input v-model="groupForm.categoryGroupName" type="text" maxlength="10" required placeholder="예: 수입, 지출"
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+              class="w-full ts-input" />
           </div>
         </template>
 
         <!-- 2. 카테고리 등록/수정 폼 -->
         <template v-else-if="isCategoryMode">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              소속 그룹 <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              소속 그룹 <span class="text-[#b91c1c]">*</span>
             </label>
             <select v-model="categoryForm.categoryGroupId" required
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all">
+              class="w-full ts-input font-medium cursor-pointer">
               <option v-for="grp in groups" :key="grp.id" :value="grp.id">
                 [{{ grp.categoryGroupCode }}] {{ grp.categoryGroupName }}
               </option>
@@ -57,33 +54,33 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              카테고리 코드 (최대 10자) <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              카테고리 코드 (최대 10자) <span class="text-[#b91c1c]">*</span>
             </label>
             <input v-model="categoryForm.categoryCode" type="text" maxlength="10" required
               :disabled="mode === 'category-create'" placeholder="예: 101, 102, 103"
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none uppercase transition-all"
+              class="w-full ts-input font-mono"
               @input="categoryForm.categoryCode = categoryForm.categoryCode.toUpperCase()" />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              카테고리명 (최대 20자) <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              카테고리명 (최대 20자) <span class="text-[#b91c1c]">*</span>
             </label>
             <input v-model="categoryForm.categoryName" type="text" maxlength="20" required
               placeholder="예: 급여, 고정지출, 생활비"
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+              class="w-full ts-input" />
           </div>
         </template>
 
         <!-- 3. 계좌 등록/수정 폼 -->
         <template v-else-if="isAccountMode">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              소속 카테고리 <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              소속 카테고리 <span class="text-[#b91c1c]">*</span>
             </label>
             <select v-model="accountForm.categoryId" required
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all">
+              class="w-full ts-input font-medium cursor-pointer">
               <optgroup v-for="grp in groups" :key="grp.id" :label="grp.categoryGroupName">
                 <option v-for="cat in grp.categories || []" :key="cat.id" :value="cat.id">
                   {{ cat.categoryName }} ({{ cat.categoryCode }})
@@ -94,98 +91,96 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-                계좌명 <span class="text-rose-500">*</span>
+              <label class="block font-semibold text-[#141413] mb-1.5">
+                계좌명 <span class="text-[#b91c1c]">*</span>
               </label>
               <input v-model="accountForm.accountName" type="text" maxlength="50" required placeholder="예: 급여 지급 계좌"
-                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                class="w-full ts-input" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-                금융기관명 <span class="text-rose-500">*</span>
+              <label class="block font-semibold text-[#141413] mb-1.5">
+                금융기관명 <span class="text-[#b91c1c]">*</span>
               </label>
               <input v-model="accountForm.institutionName" type="text" maxlength="30" required
                 placeholder="예: 국민은행, 카카오뱅크"
-                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                class="w-full ts-input" />
             </div>
           </div>
 
-
-
           <div class="flex items-center gap-6 pt-1">
-            <span class="text-xs font-semibold text-slate-600">계좌 상태:</span>
-            <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+            <span class="font-semibold text-[#141413]">계좌 상태:</span>
+            <label class="inline-flex items-center gap-2 cursor-pointer text-[14px]">
               <input type="radio" :value="true" v-model="accountForm.useYn"
-                class="text-brand-primary focus:ring-brand-primary" />
-              <span class="text-slate-800 font-medium">사용</span>
+                class="accent-[#0a4b49]" />
+              <span class="text-[#141413] font-medium">사용</span>
             </label>
-            <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+            <label class="inline-flex items-center gap-2 cursor-pointer text-[14px]">
               <input type="radio" :value="false" v-model="accountForm.useYn"
-                class="text-brand-primary focus:ring-brand-primary" />
-              <span class="text-slate-500">해지</span>
+                class="accent-[#0a4b49]" />
+              <span class="text-[#575653]">해지</span>
             </label>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label class="block font-semibold text-[#141413] mb-1.5">
               메모 (최대 200자)
             </label>
             <textarea v-model="accountForm.memo" rows="2" maxlength="200" placeholder="계좌 용도, 이체일 등 특이사항 기록"
-              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all resize-none"></textarea>
+              class="w-full ts-input !h-auto py-2 resize-none"></textarea>
           </div>
         </template>
 
         <!-- 4. 입금/출금 폼 -->
         <template v-else-if="isTransactionMode">
-          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 text-sm">
-            <div class="text-slate-500 text-xs">대상 계좌</div>
-            <div class="font-bold text-slate-900">{{ transactionTarget.accountName }}</div>
-            <div class="text-xs text-slate-600">
+          <div class="p-3.5 bg-[#F7F6F2] rounded-[6px] border border-[#141413]/12 space-y-1 text-[14px]">
+            <div class="text-[#575653] text-[13px]">대상 계좌</div>
+            <div class="font-bold text-[#141413]">{{ transactionTarget.accountName }}</div>
+            <div class="text-[13px] text-[#575653]">
               {{ transactionTarget.institutionName }} · {{ transactionTarget.accountNumber }}
             </div>
-            <div class="text-xs font-semibold text-brand-primary pt-1">
+            <div class="text-[13px] font-semibold text-[#0a4b49] pt-1 tabular-nums">
               현재 잔액: {{ (transactionTarget.balance || 0).toLocaleString() }}원
             </div>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1.5">
-              {{ mode === 'account-deposit' ? '입금할 금액' : '출금할 금액' }} (원) <span class="text-rose-500">*</span>
+            <label class="block font-semibold text-[#141413] mb-1.5">
+              {{ mode === 'account-deposit' ? '입금할 금액' : '출금할 금액' }} (원) <span class="text-[#b91c1c]">*</span>
             </label>
             <input v-model.number="transactionAmount" type="number" min="1" required placeholder="0"
-              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold focus:bg-white focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+              class="w-full ts-input font-mono font-bold text-[15px] tabular-nums" />
           </div>
 
           <!-- 빠른 금액 추가 버튼 -->
           <div class="flex flex-wrap gap-1.5 pt-1">
             <button v-for="amt in [10000, 50000, 100000, 500000, 1000000]" :key="amt" type="button"
               @click="addTransactionAmount(amt)"
-              class="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors">
+              class="btn btn--secondary !min-h-[30px] !px-2.5">
               +{{ (amt / 10000) >= 1 ? (amt / 10000) + '만' : amt.toLocaleString() }}
             </button>
             <button v-if="mode === 'account-withdraw'" type="button"
               @click="transactionAmount = transactionTarget.balance || 0"
-              class="px-2.5 py-1 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors">
+              class="btn btn--danger-outline !min-h-[30px] !px-2.5">
               전액
             </button>
           </div>
         </template>
 
         <!-- 에러 메시지 -->
-        <p v-if="errorMessage" class="text-xs text-rose-500 font-medium">
+        <p v-if="errorMessage" class="text-[13px] text-[#b91c1c] font-semibold">
           {{ errorMessage }}
         </p>
 
         <!-- 모달 푸터 버튼 -->
-        <div class="pt-4 flex items-center justify-end gap-2 border-t border-slate-100">
+        <div class="pt-4 flex items-center justify-end gap-2 border-t border-[#141413]/12">
           <button type="button" @click="handleClose"
-            class="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+            class="btn btn--secondary">
             취소
           </button>
           <button type="submit" :disabled="isSubmitting"
-            class="px-5 py-2 text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primaryHover rounded-xl transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5">
+            class="btn btn--primary">
             <span v-if="isSubmitting"
-              class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
             <span>{{ submitButtonText }}</span>
           </button>
         </div>
@@ -195,8 +190,21 @@
 </template>
 
 <script setup>
+/**
+ * ============================================================================
+ * @file        ClassificationModal.vue
+ * @layer       UI Component (Presentation Layer - Modal)
+ * @role        Level 1(그룹), Level 2(카테고리), Level 3(계좌)의 신규 등록/수정 및 입출금 통합 모달
+ * @parent      AccountClassificationView.vue
+ * @note        mode 값('group-create', 'category-create', 'account-create' 등)에 따라
+ *              하나의 모달 안에서 서로 다른 입력 폼(<template v-if="isGroupMode"> 등)을 보여줍니다.
+ * ============================================================================
+ */
 import { ref, computed, watch } from 'vue'
 
+// ============================================================================
+// [SECTION 1] Props & Emits (모달 열림 상태, 동작 모드, 초기 데이터, 닫기/제출 이벤트)
+// ============================================================================
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -218,20 +226,26 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submit'])
 
+// ============================================================================
+// [SECTION 2] Reactive State (각 레벨별 입력 폼 객체 및 에러 상태)
+// ============================================================================
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
+/** 1. 대분류 그룹 입력 폼 데이터 */
 const groupForm = ref({
   categoryGroupCode: '',
   categoryGroupName: ''
 })
 
+/** 2. 중분류 카테고리 입력 폼 데이터 */
 const categoryForm = ref({
   categoryGroupId: null,
   categoryCode: '',
   categoryName: ''
 })
 
+/** 3. 소분류 계좌 입력 폼 데이터 */
 const accountForm = ref({
   categoryId: null,
   accountName: '',
@@ -242,14 +256,19 @@ const accountForm = ref({
   memo: ''
 })
 
+/** 4. 입출금 처리 대상 계좌 및 금액 */
 const transactionTarget = ref({})
 const transactionAmount = ref(0)
 
+// ============================================================================
+// [SECTION 3] Computed Properties (현재 mode에 따른 화면 분기 플래그 및 타이틀)
+// ============================================================================
 const isGroupMode = computed(() => props.mode.startsWith('group'))
 const isCategoryMode = computed(() => props.mode.startsWith('category'))
 const isAccountMode = computed(() => props.mode.startsWith('account-create') || props.mode.startsWith('account-edit'))
 const isTransactionMode = computed(() => props.mode === 'account-deposit' || props.mode === 'account-withdraw')
 
+/** 모달 상단 헤더에 표시할 제목 */
 const modalTitle = computed(() => {
   switch (props.mode) {
     case 'group-create':
@@ -273,6 +292,7 @@ const modalTitle = computed(() => {
   }
 })
 
+/** 모달 하단 제출 버튼 라벨 */
 const submitButtonText = computed(() => {
   if (props.mode.endsWith('create')) return '등록하기'
   if (props.mode.endsWith('edit')) return '수정하기'
@@ -281,6 +301,9 @@ const submitButtonText = computed(() => {
   return '확인'
 })
 
+// ============================================================================
+// [SECTION 4] Watchers & Code Auto-Generation (모달 오픈 시 자동 코드 채번 조회)
+// ============================================================================
 watch(
   () => props.isOpen,
   (open) => {

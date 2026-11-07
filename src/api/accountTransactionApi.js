@@ -1,20 +1,28 @@
 /**
- * 계좌별 일자 거래(지출) 내역 REST API 클라이언트
- * 엔티티: com.honeybudget.domain.AccountTransaction
- * 필드: id, accountId, yearMonth (YYYY-MM), transactionDate (YYYY-MM-DD), amount, description, memo
- * 
- * 백엔드 REST API 규격:
- * - GET  /api/v1/account-transactions?yearMonth=YYYY-MM&accountId=
- * - POST /api/v1/account-transactions
- * - PUT  /api/v1/account-transactions/{id}
- * - DELETE /api/v1/account-transactions/{id}
- * 
- * ※ 백엔드 API 미구현 시 localStorage로 자동 fallback하여 즉시 사용 가능하도록 처리합니다.
+ * ============================================================================
+ * @file        accountTransactionApi.js
+ * @layer       API Client Layer (Spring의 FeignClient / RestTemplate 역할)
+ * @role        월별 소비내역(생활비/식비, 고정비, 자동차/병원비) 일자별 지출 CRUD API 클라이언트
+ * @spring      백엔드 연동 정보:
+ *              - Entity     : com.honeybudget.account.domain.AccountTransaction
+ *              - Base URI   : /api/v1/account-transactions
+ *              - 주요 컬럼  : id, accountId, yearMonth(YYYY-MM), transactionDate(YYYY-MM-DD), amount, description, memo
+ * @fallback    백엔드 컨트롤러가 아직 띄워지지 않았거나 오프라인일 때도 화면이 정상 동작하도록
+ *              try-catch 내부에서 브라우저 localStorage로 자동 폴백(Fallback) 처리합니다.
+ * ============================================================================
  */
 
 const BASE_URL = '/api/v1/account-transactions'
 const STORAGE_KEY = 'honey-budget-transactions-v1'
 
+// ============================================================================
+// [INTERNAL] 로컬 스토리지 폴백(Fallback) 헬퍼 함수
+// ============================================================================
+
+/**
+ * 로컬 스토리지에서 소비내역 목록을 읽어오며, 최초 실행 시 엑셀 기반 샘플 데이터를 반환합니다.
+ * @returns {Array<object>} 거래 내역 배열
+ */
 const loadFromStorage = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -22,7 +30,7 @@ const loadFromStorage = () => {
   } catch (e) {
     console.error('Failed to load transactions from localStorage', e)
   }
-  // 기본 샘플 데이터 (2026 가계.xlsx 1월 시트 기반)
+  // 최초 접속 시 노출할 기본 샘플 데이터 ('2026 가계.xlsx' 1월 시트 기준)
   return [
     {
       id: 1,
@@ -87,6 +95,10 @@ const loadFromStorage = () => {
   ]
 }
 
+/**
+ * 소비내역 배열을 로컬 스토리지에 직렬화하여 저장합니다.
+ * @param {Array<object>} list - 저장할 거래 내역 배열
+ */
 const saveToStorage = (list) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
@@ -95,7 +107,17 @@ const saveToStorage = (list) => {
   }
 }
 
+// ============================================================================
+// [PUBLIC API] 외부(Composable)에서 호출하는 REST API 메소드
+// ============================================================================
+
 export const accountTransactionApi = {
+  /**
+   * [월별/계좌별 소비내역 목록 조회]
+   * @http        GET /api/v1/account-transactions?yearMonth={YYYY-MM}&accountId={id}
+   * @param       {{ yearMonth?: string, accountId?: number|string }} params - 검색 조건
+   * @returns     {Promise<Array<object>>} 일자 역순(최신순) 정렬된 소비내역 리스트
+   */
   async fetchTransactions({ yearMonth, accountId } = {}) {
     try {
       let query = []
@@ -112,7 +134,7 @@ export const accountTransactionApi = {
         if (Array.isArray(data)) return data
       }
     } catch (err) {
-      // 서버 미구현 또는 네트워크 오류 시 localStorage fallback
+      // 서버 미구현 또는 네트워크 오류 시 localStorage 폴백 진행
     }
 
     let all = loadFromStorage()
@@ -125,6 +147,12 @@ export const accountTransactionApi = {
     return all.sort((a, b) => (b.transactionDate || '').localeCompare(a.transactionDate || ''))
   },
 
+  /**
+   * [신규 소비내역 단건 등록]
+   * @http        POST /api/v1/account-transactions
+   * @param       {object} payload - { accountId, accountName, yearMonth, transactionDate, amount, description, memo }
+   * @returns     {Promise<object>} 등록된 소비내역 객체
+   */
   async createTransaction(payload) {
     try {
       const res = await fetch(BASE_URL, {
@@ -156,6 +184,13 @@ export const accountTransactionApi = {
     return newTrans
   },
 
+  /**
+   * [기존 소비내역 단건 수정]
+   * @http        PUT /api/v1/account-transactions/{id}
+   * @param       {number|string} id - 수정할 거래 내역 PK
+   * @param       {object} payload - 수정할 필드 객체
+   * @returns     {Promise<object>} 수정 완료된 소비내역 객체
+   */
   async updateTransaction(id, payload) {
     try {
       const res = await fetch(`${BASE_URL}/${id}`, {
@@ -186,6 +221,12 @@ export const accountTransactionApi = {
     throw new Error('수정할 거래 내역을 찾을 수 없습니다.')
   },
 
+  /**
+   * [소비내역 단건 삭제]
+   * @http        DELETE /api/v1/account-transactions/{id}
+   * @param       {number|string} id - 삭제할 거래 내역 PK
+   * @returns     {Promise<boolean>} 삭제 성공 여부(true)
+   */
   async deleteTransaction(id) {
     try {
       const res = await fetch(`${BASE_URL}/${id}`, {
@@ -203,4 +244,3 @@ export const accountTransactionApi = {
     return true
   }
 }
-

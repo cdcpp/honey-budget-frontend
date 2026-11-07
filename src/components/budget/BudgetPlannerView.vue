@@ -1,17 +1,16 @@
 <script setup>
 /**
- * @file BudgetPlannerView.vue
- * @description 월간 예산 플래너 최상위 도메인 뷰 (Domain View)
- * 
- * 백엔드 개발자 참고 (Spring MVC 비유):
- * - 이 컴포넌트는 예산 플래너 메인 화면 뷰입니다.
- * - Service 계층인 useBudget()을 호출하여 데이터를 받아오고 하위 컴포넌트들에 전달합니다.
- * - 하위 컴포넌트:
- *   - AppHeader: 상단 타이틀, 연간 합계 뱃지, 초기화/백업/엑셀 내보내기 버튼
- *   - SummaryCards: 총 자산, 연간 수입, 저축, 지출 요약 카드
- *   - GuideSection: 사용 가이드 안내 박스
- *   - BalanceSection: 현재 비상금 및 통장 잔액 현황 관리
- *   - BudgetTable: 연간 1~12월 계좌별 금액 입력 및 집계 명세표 (핵심 그리드)
+ * ============================================================================
+ * @file        BudgetPlannerView.vue
+ * @layer       Domain View Layer (월간 예산 플래너 최상위 컨테이너 뷰)
+ * @role        useBudget() 비즈니스 로직에서 상태와 액션을 받아 하위 5개 UI 컴포넌트에 주입합니다.
+ * @parent      App.vue
+ * @children    - AppHeader      : 타이틀 및 JSON 백업/복원, 0원 초기화, CSV 다운로드 버튼
+ *              - SummaryCards   : 보유 잔액, 연간 총 수입, 연간 저축/투자, 연간 총 지출 4대 지표 카드
+ *              - GuideSection   : 지출 및 수입 분류 기준 안내 카드
+ *              - BalanceSection : 비상금 및 예적금 보유 잔액 편집 카드
+ *              - BudgetTable    : 연간 1~12월 계좌별 금액 입력 및 자동 합산 그리드 테이블
+ * ============================================================================
  */
 import { useBudget } from '../../composables/useBudget'
 import AppHeader from '../AppHeader.vue'
@@ -20,6 +19,9 @@ import GuideSection from '../GuideSection.vue'
 import BalanceSection from '../BalanceSection.vue'
 import BudgetTable from '../BudgetTable.vue'
 
+// ============================================================================
+// [SECTION 1] Composable State & Actions (useBudget에서 상태 및 함수 구조분해)
+// ============================================================================
 const {
   balanceList,
   sections,
@@ -58,7 +60,7 @@ const {
 
 <template>
   <div class="space-y-6">
-    <!-- 1. 헤더 (버튼/백업/내보내기) -->
+    <!-- [UI 영역 1] 상단 타이틀 및 파일 입출력 액션 헤더 -->
     <AppHeader
       :on-reset="resetToZero"
       :on-export-json="exportToJson"
@@ -66,7 +68,7 @@ const {
       :on-export-csv="exportToCsv"
     />
 
-    <!-- 2. 핵심 지표 요약 카드 (총자산 / 연간 수입 / 연간 저축 / 연간 지출) -->
+    <!-- [UI 영역 2] 연간 핵심 재무 지표 4열 요약 카드 -->
     <SummaryCards
       :total-balance="totalBalance"
       :annual-income="annualIncomeTotal"
@@ -76,7 +78,7 @@ const {
       :format-currency="formatCurrency"
     />
 
-    <!-- 3. 사용 안내 & 자산/비상금 현황 -->
+    <!-- [UI 영역 3] 좌측 분류 기준 안내(2칸) & 우측 보유 잔액 현황(1칸) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
       <GuideSection class="lg:col-span-2 h-full" />
       <BalanceSection
@@ -89,7 +91,7 @@ const {
       />
     </div>
 
-    <!-- 4. 연간 수입/저축/지출 계좌별 1~12월 명세표 (AccountYearMonth 연동) -->
+    <!-- [UI 영역 4] 연간 수입/저축/지출 계좌별 1~12월 명세표 (백엔드 AccountYearMonth 연동) -->
     <BudgetTable
       :sections="sections"
       :loading="loading"
@@ -116,4 +118,3 @@ const {
     />
   </div>
 </template>
-

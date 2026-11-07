@@ -1,11 +1,23 @@
 /**
- * 계좌 분류 관리 (Level 1 그룹 -> Level 2 카테고리 -> Level 3 계좌) REST API 클라이언트
- * 백엔드 REST API 명세:
- * - CategoryGroupController: /api/v1/category-groups
- * - CategoryController: /api/v1/categories
- * - AccountController: /api/v1/accounts
+ * ============================================================================
+ * @file        accountClassificationApi.js
+ * @layer       API Client Layer (Spring의 FeignClient / RestTemplate 역할)
+ * @role        3단계 계좌 분류 체계(Level 1 그룹 -> Level 2 카테고리 -> Level 3 계좌) REST API 클라이언트
+ * @spring      백엔드 연동 정보:
+ *              - CategoryGroupController : /api/v1/category-groups
+ *              - CategoryController      : /api/v1/categories
+ *              - AccountController       : /api/v1/accounts
+ * ============================================================================
  */
 
+/**
+ * [공통 HTTP Fetch 래퍼 함수]
+ * @description 백엔드의 공통 응답 포맷(ApiResponse { success, data, message })을 파싱하고
+ *              오류 발생 시 표준 Error 객체를 발생시킵니다.
+ * @param       {string} url - 요청 엔드포인트 경로
+ * @param       {RequestInit} options - fetch 옵션 (method, headers, body)
+ * @returns     {Promise<any>} 응답 JSON의 data 본문
+ */
 const request = async (url, options = {}) => {
   const res = await fetch(url, {
     headers: {
@@ -36,7 +48,17 @@ const request = async (url, options = {}) => {
 };
 
 export const accountClassificationApi = {
-  // 1. 전체 계층 트리 조회: 그룹, 카테고리, 계좌 API 병렬 호출 후 계층 구조로 합성
+  // ==========================================================================
+  // [1] 전체 3단계 계층 트리(Hierarchy) 통합 조회
+  // ==========================================================================
+
+  /**
+   * [그룹 -> 카테고리 -> 계좌 3단계 트리 조립 조회]
+   * @description 백엔드의 3개 목록 API를 병렬(Promise.all)로 호출한 뒤,
+   *              외래키(categoryGroupId, categoryId)를 기준으로 중첩 트리 구조로 조립합니다.
+   * @http        GET /api/v1/category-groups, /api/v1/categories, /api/v1/accounts
+   * @returns     {Promise<Array<object>>} 조립된 3단계 그룹 배열
+   */
   async fetchHierarchy() {
     const [groupsRes, categoriesRes, accountsRes] = await Promise.all([
       request("/api/v1/category-groups"),
@@ -48,6 +70,7 @@ export const accountClassificationApi = {
     const categories = Array.isArray(categoriesRes) ? categoriesRes : [];
     const accounts = Array.isArray(accountsRes) ? accountsRes : [];
 
+    // 1단계: 카테고리 ID 맵 및 그룹별 카테고리 리스트 맵 생성
     const categoryMap = new Map();
     const groupCategoriesMap = new Map();
 
@@ -67,6 +90,7 @@ export const accountClassificationApi = {
       groupCategoriesMap.get(c.categoryGroupId).push(catObj);
     }
 
+    // 2단계: 각 계좌를 소속 카테고리(categoryId)의 accounts 배열에 삽입
     for (const a of accounts) {
       const targetCat = categoryMap.get(a.categoryId);
       if (targetCat) {
@@ -84,6 +108,7 @@ export const accountClassificationApi = {
       }
     }
 
+    // 3단계: 각 대분류 그룹에 조립된 카테고리 목록을 연결하여 최종 반환
     return groups.map((g) => ({
       id: g.id,
       categoryGroupCode: g.categoryGroupCode,
@@ -92,7 +117,14 @@ export const accountClassificationApi = {
     }));
   },
 
-  // 2. 대분류 그룹 등록
+  // ==========================================================================
+  // [2] Level 1: 대분류 그룹(CategoryGroup) CRUD
+  // ==========================================================================
+
+  /**
+   * [대분류 그룹 등록]
+   * @http POST /api/v1/category-groups
+   */
   async createGroup({ categoryGroupCode, categoryGroupName }) {
     return request("/api/v1/category-groups", {
       method: "POST",
@@ -100,7 +132,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 3. 대분류 그룹 명칭 수정
+  /**
+   * [대분류 그룹 명칭 수정]
+   * @http PUT /api/v1/category-groups/{id}
+   */
   async updateGroup(id, { categoryGroupName }) {
     return request(`/api/v1/category-groups/${id}`, {
       method: "PUT",
@@ -108,14 +143,24 @@ export const accountClassificationApi = {
     });
   },
 
-  // 4. 대분류 그룹 삭제
+  /**
+   * [대분류 그룹 삭제]
+   * @http DELETE /api/v1/category-groups/{id}
+   */
   async deleteGroup(id) {
     return request(`/api/v1/category-groups/${id}`, {
       method: "DELETE",
     });
   },
 
-  // 5. 중분류 카테고리 등록
+  // ==========================================================================
+  // [3] Level 2: 중분류 카테고리(Category) CRUD
+  // ==========================================================================
+
+  /**
+   * [중분류 카테고리 등록]
+   * @http POST /api/v1/categories
+   */
   async createCategory({ categoryGroupId, categoryCode, categoryName }) {
     return request("/api/v1/categories", {
       method: "POST",
@@ -123,7 +168,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 6. 중분류 카테고리 수정
+  /**
+   * [중분류 카테고리 수정]
+   * @http PUT /api/v1/categories/{id}
+   */
   async updateCategory(id, { categoryGroupId, categoryName }) {
     return request(`/api/v1/categories/${id}`, {
       method: "PUT",
@@ -131,14 +179,24 @@ export const accountClassificationApi = {
     });
   },
 
-  // 7. 중분류 카테고리 삭제
+  /**
+   * [중분류 카테고리 삭제]
+   * @http DELETE /api/v1/categories/{id}
+   */
   async deleteCategory(id) {
     return request(`/api/v1/categories/${id}`, {
       method: "DELETE",
     });
   },
 
-  // 8. 계좌 등록
+  // ==========================================================================
+  // [4] Level 3: 소분류 계좌(Account) CRUD 및 입출금
+  // ==========================================================================
+
+  /**
+   * [신규 계좌 등록]
+   * @http POST /api/v1/accounts
+   */
   async createAccount({
     categoryId,
     accountName,
@@ -160,7 +218,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 9. 계좌 정보 수정
+  /**
+   * [계좌 정보 수정]
+   * @http PUT /api/v1/accounts/{id}
+   */
   async updateAccount(id, { accountName, categoryId, memo }) {
     return request(`/api/v1/accounts/${id}`, {
       method: "PUT",
@@ -168,7 +229,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 10. 계좌 잔액 입금
+  /**
+   * [계좌 입금 처리]
+   * @http POST /api/v1/accounts/{id}/deposit
+   */
   async depositAccount(id, amount) {
     return request(`/api/v1/accounts/${id}/deposit`, {
       method: "POST",
@@ -176,7 +240,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 11. 계좌 잔액 출금
+  /**
+   * [계좌 출금 처리]
+   * @http POST /api/v1/accounts/{id}/withdraw
+   */
   async withdrawAccount(id, amount) {
     return request(`/api/v1/accounts/${id}/withdraw`, {
       method: "POST",
@@ -184,7 +251,10 @@ export const accountClassificationApi = {
     });
   },
 
-  // 12. 계좌 비활성화 / 삭제
+  /**
+   * [계좌 삭제 / 해지 처리]
+   * @http DELETE /api/v1/accounts/{id}
+   */
   async deleteAccount(id) {
     return request(`/api/v1/accounts/${id}`, {
       method: "DELETE",
@@ -192,13 +262,14 @@ export const accountClassificationApi = {
   },
 };
 
+// 개별 함수 Named Export (하위 호환 및 단위 테스트 모킹 지원)
 export const fetchHierarchy = () => accountClassificationApi.fetchHierarchy();
 export const createCategoryGroupApi = (d) =>
   accountClassificationApi.createGroup(d);
 export const updateCategoryGroupApi = (id, d) =>
   accountClassificationApi.updateGroup(id, d);
-export const deleteCategoryGroupApi = (id) =>
-  accountClassificationApi.deleteGroup(id);
+export const deleteCategoryGroupApi = (id, d) =>
+  accountClassificationApi.deleteGroup(id, d);
 export const createCategoryApi = (d) =>
   accountClassificationApi.createCategory(d);
 export const updateCategoryApi = (id, d) =>
