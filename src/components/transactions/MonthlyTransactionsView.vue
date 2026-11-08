@@ -3,8 +3,8 @@
  * ============================================================================
  * @file        MonthlyTransactionsView.vue
  * @layer       Domain View Layer (월별 소비내역 최상위 메인 화면)
- * @role        월별(급여일 5일~익월 4일 기준) 생활비/고정비/자동차·병원비 지출 내역 조회,
- *              4대 요약 카드 표시, 인라인 한 줄 빠른 등록 및 상세 모달 수정/삭제를 담당합니다.
+ * @role        토스 다크 가계부 스타일의 월별(급여일 5일~익월 4일 기준) 소비내역 조회,
+ *              카테고리별 요약 카드, 빠른 한 줄 추가, 모바일 카드 피드 & 데스크톱 테이블을 제공합니다.
  * @parent      App.vue
  * @children    TransactionModal.vue
  * @spring      com.honeybudget.account.domain.AccountTransaction 연동
@@ -39,8 +39,6 @@ const {
 // ============================================================================
 // [SECTION 2] Local UI State (인라인 빠른 등록 폼 & 팝업 모달 상태)
 // ============================================================================
-
-/** 테이블 상단 '빠른 소비내역 추가' 한 줄 입력 폼 데이터 */
 const quickForm = ref({
   transactionDate: new Date().toISOString().substring(0, 10),
   accountName: '생활비(식비)',
@@ -49,20 +47,17 @@ const quickForm = ref({
   memo: ''
 })
 
-const isAddingQuick = ref(false) // 인라인 등록 요청 진행 중 여부
+const isAddingQuick = ref(false)
 
-/** 상세 등록/수정 팝업 모달(TransactionModal) 열림 상태 및 초기 데이터 */
 const modalState = ref({
   isOpen: false,
-  mode: 'create', // 'create'(신규 작성) | 'edit'(기존 내역 수정)
+  mode: 'create',
   data: {}
 })
 
 // ============================================================================
-// [SECTION 3] Event Handlers (모달 열기/닫기, 폼 제출, 삭제, 날짜 포맷팅)
+// [SECTION 3] Event Handlers
 // ============================================================================
-
-/** 상단 '+ 내역 작성' 버튼 클릭 시 신규 등록 모드로 모달 오픈 */
 const openCreateModal = () => {
   modalState.value = {
     isOpen: true,
@@ -74,7 +69,6 @@ const openCreateModal = () => {
   }
 }
 
-/** 테이블 행의 '수정' 버튼 클릭 시 해당 행 데이터를 담아 수정 모드로 모달 오픈 */
 const openEditModal = (item) => {
   modalState.value = {
     isOpen: true,
@@ -83,12 +77,10 @@ const openEditModal = (item) => {
   }
 }
 
-/** 모달 닫기 */
 const closeModal = () => {
   modalState.value.isOpen = false
 }
 
-/** 모달 내부에서 '등록하기 / 수정 완료' 제출 시 실행 */
 const handleModalSubmit = async (formData) => {
   try {
     if (modalState.value.mode === 'create') {
@@ -102,7 +94,6 @@ const handleModalSubmit = async (formData) => {
   }
 }
 
-/** 인라인 빠른 등록 바에서 '추가' 버튼(또는 엔터) 입력 시 실행 */
 const handleQuickSubmit = async () => {
   if (!quickForm.value.description.trim()) {
     alert('사용처/내용을 입력해주세요.')
@@ -125,7 +116,6 @@ const handleQuickSubmit = async () => {
       description: quickForm.value.description,
       memo: quickForm.value.memo
     })
-    // 연속 입력이 편하도록 일자와 소비항목은 유지하고 내용/금액/메모만 비웁니다.
     quickForm.value.description = ''
     quickForm.value.amount = ''
     quickForm.value.memo = ''
@@ -136,7 +126,6 @@ const handleQuickSubmit = async () => {
   }
 }
 
-/** 테이블 행의 '삭제' 버튼 클릭 시 확인 창 후 삭제 실행 */
 const handleDelete = async (item) => {
   if (!confirm(`[${item.description}] ${Number(item.amount).toLocaleString()}원 내역을 삭제하시겠습니까?`)) {
     return
@@ -148,7 +137,6 @@ const handleDelete = async (item) => {
   }
 }
 
-/** 'YYYY-MM-DD' 문자열을 '1월 5일 (월)' 형태의 한국어 요일 포함 포맷으로 변환 */
 const formatDateDisplay = (dateStr) => {
   if (!dateStr) return '-'
   try {
@@ -165,7 +153,6 @@ const formatDateDisplay = (dateStr) => {
   return dateStr
 }
 
-/** 숫자를 '0,000원' 원화 포맷으로 변환 */
 const formatCurrency = (val) => {
   if (val === undefined || val === null || isNaN(val)) return '0원'
   return Number(val).toLocaleString('ko-KR') + '원'
@@ -173,41 +160,43 @@ const formatCurrency = (val) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5 sm:space-y-6">
     <!-- ================================================================== -->
-    <!-- [UI 영역 1] 상단 헤더 (정산 기준 기간, 연월 이동 네비게이터, 내역 작성) -->
+    <!-- [UI 영역 1] 토스 다크 가계부 스타일 상단 헤더 & 연월 네비게이터       -->
     <!-- ================================================================== -->
-    <header class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-6 border-b border-[#141413]/12">
+    <header class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pt-1 pb-2">
       <div>
-        <p class="text-[13px] font-medium text-[#575653] mb-1">
-          정산 기준 기간: {{ periodLabel }}
-        </p>
-        <h1 class="text-[28px] sm:text-[32px] font-bold tracking-tight text-[#141413] leading-tight">
-          월별 소비내역
+        <div class="inline-flex items-center gap-2 text-[13px] font-bold text-[#64A8FF] mb-1">
+          <span>월별 소비내역</span>
+          <span class="text-[#8B95A1] font-medium">· {{ periodLabel }}</span>
+        </div>
+        <h1 class="text-[24px] sm:text-[28px] font-extrabold tracking-tight text-[#F9FAFB] leading-snug">
+          {{ selectedMonth }}월에 쓴 돈
+          <span class="text-[#64A8FF] font-mono tabular-nums ml-1">{{ formatCurrency(totalMonthAmount) }}</span>
         </h1>
-        <p class="text-[15px] text-[#575653] mt-1.5">
-          생활비(식비), 고정비, 자동차/병원비 지출 내역을 일자별로 기록하고 집계합니다.
+        <p class="text-[14px] text-[#8B95A1] mt-1 m-0">
+          생활비(식비), 고정비, 자동차/병원비 지출을 날짜별로 기록해요.
         </p>
       </div>
 
-      <!-- 우측: 연월 선택기(< 2026년 1월 >) 및 '+ 내역 작성' 모달 오픈 버튼 -->
-      <div class="flex flex-wrap items-center gap-2.5">
-        <div class="inline-flex items-center bg-white border border-[#141413]/20 rounded-[6px] h-[36px] px-1">
+      <!-- 우측: 연월 선택기(< 2026년 1월 >) 및 '+ 내역 작성' 버튼 -->
+      <div class="flex items-center justify-between sm:justify-end gap-2.5">
+        <div class="inline-flex items-center bg-[#151821] border border-white/[0.1] rounded-[12px] h-[40px] px-1">
           <button
             @click="prevMonth"
-            class="w-7 h-7 rounded-[4px] flex items-center justify-center text-[#575653] hover:text-[#141413] hover:bg-[#F7F6F2] transition-colors cursor-pointer"
+            class="w-8 h-8 rounded-[8px] flex items-center justify-center text-[#8B95A1] hover:text-[#F9FAFB] hover:bg-[#1C202B] text-[18px] font-bold transition-colors cursor-pointer"
             title="이전 달"
           >
             &lsaquo;
           </button>
 
-          <div class="px-3 font-semibold text-[14px] text-[#141413] min-w-[104px] text-center tabular-nums">
+          <div class="px-3 font-extrabold text-[14px] text-[#F9FAFB] min-w-[100px] text-center tabular-nums">
             {{ selectedYear }}년 {{ selectedMonth }}월
           </div>
 
           <button
             @click="nextMonth"
-            class="w-7 h-7 rounded-[4px] flex items-center justify-center text-[#575653] hover:text-[#141413] hover:bg-[#F7F6F2] transition-colors cursor-pointer"
+            class="w-8 h-8 rounded-[8px] flex items-center justify-center text-[#8B95A1] hover:text-[#F9FAFB] hover:bg-[#1C202B] text-[18px] font-bold transition-colors cursor-pointer"
             title="다음 달"
           >
             &rsaquo;
@@ -224,75 +213,75 @@ const formatCurrency = (val) => {
     </header>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 2] 이번 달 소비 지출 4대 요약 카드                           -->
+    <!-- [UI 영역 2] 이번 달 소비 지출 4대 요약 카드 (모바일 2열 / 데스크톱 4열) -->
     <!-- ================================================================== -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="이번 달 소비 요약">
-      <div class="ts-card p-5 flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between text-[13px] font-medium text-[#575653]">
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" aria-label="이번 달 소비 요약">
+      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
+        <div class="flex items-center justify-between text-[13px] font-bold text-[#8B95A1]">
           <span>이번 달 총 소비액</span>
-          <span class="tabular-nums">{{ transactions.length }}건</span>
+          <span class="px-2 py-0.5 rounded-full bg-[#3182F6]/20 text-[#64A8FF] tabular-nums">{{ transactions.length }}건</span>
         </div>
         <div>
-          <div class="text-[24px] font-bold font-mono text-[#141413] tracking-tight tabular-nums">
+          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
             {{ formatCurrency(totalMonthAmount) }}
           </div>
-          <p class="text-[13px] text-[#575653] mt-1">기준: {{ periodLabel }}</p>
+          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">{{ periodLabel }}</p>
         </div>
       </div>
 
-      <div class="ts-card p-5 flex flex-col justify-between gap-3">
-        <div class="text-[13px] font-medium text-[#575653]">생활비 (식비)</div>
+      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
+        <div class="text-[13px] font-bold text-[#8B95A1]">생활비(식비)</div>
         <div>
-          <div class="text-[24px] font-bold font-mono text-[#141413] tracking-tight tabular-nums">
+          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
             {{ formatCurrency(accountTotals['생활비(식비)'] || 0) }}
           </div>
-          <p class="text-[13px] text-[#575653] mt-1">장보기, 마트, 외식, 식재료</p>
+          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">장보기 · 외식 · 식재료</p>
         </div>
       </div>
 
-      <div class="ts-card p-5 flex flex-col justify-between gap-3">
-        <div class="text-[13px] font-medium text-[#575653]">고정비</div>
+      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
+        <div class="text-[13px] font-bold text-[#8B95A1]">고정비</div>
         <div>
-          <div class="text-[24px] font-bold font-mono text-[#141413] tracking-tight tabular-nums">
+          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
             {{ formatCurrency(accountTotals['고정비'] || 0) }}
           </div>
-          <p class="text-[13px] text-[#575653] mt-1">통신비, 공과금, 정기 구독료</p>
+          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">통신비 · 공과금 · 구독료</p>
         </div>
       </div>
 
-      <div class="ts-card p-5 flex flex-col justify-between gap-3">
-        <div class="text-[13px] font-medium text-[#575653]">자동차 / 병원비</div>
+      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
+        <div class="text-[13px] font-bold text-[#8B95A1]">자동차/병원비</div>
         <div>
-          <div class="text-[24px] font-bold font-mono text-[#141413] tracking-tight tabular-nums">
+          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
             {{ formatCurrency(accountTotals['자동차/병원비'] || 0) }}
           </div>
-          <p class="text-[13px] text-[#575653] mt-1">주유, 하이패스, 진료 및 약국</p>
+          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">주유 · 하이패스 · 병원</p>
         </div>
       </div>
     </section>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 3] 빠른 소비내역 추가 바 (모달 없이 한 줄 즉시 입력)           -->
+    <!-- [UI 영역 3] 빠른 소비내역 추가 카드 (모바일/데스크톱 반응형 그리드)    -->
     <!-- ================================================================== -->
-    <section class="ts-card p-5 space-y-3" aria-label="빠른 소비내역 추가">
-      <div class="flex items-baseline justify-between gap-2">
-        <h2 class="text-[15px] font-bold text-[#141413]">
+    <section class="ts-card p-4 sm:p-5 space-y-3" aria-label="빠른 소비내역 추가">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-[15px] font-extrabold text-[#F9FAFB]">
           빠른 소비내역 추가
         </h2>
-        <span class="text-[13px] text-[#575653]">일자·항목·사용처·금액을 한 줄로 즉시 입력합니다.</span>
+        <span class="text-[13px] text-[#8B95A1]">자주 쓰는 내역을 바로 입력해요</span>
       </div>
 
-      <form @submit.prevent="handleQuickSubmit" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+      <form @submit.prevent="handleQuickSubmit" class="grid grid-cols-2 sm:grid-cols-12 gap-2.5">
         <input
           v-model="quickForm.transactionDate"
           type="date"
           required
-          class="sm:col-span-2 ts-input tabular-nums"
+          class="col-span-1 sm:col-span-2 ts-input tabular-nums"
         />
 
         <select
           v-model="quickForm.accountName"
-          class="sm:col-span-2 ts-input font-medium cursor-pointer"
+          class="col-span-1 sm:col-span-2 ts-input font-bold cursor-pointer"
         >
           <option v-for="acc in availableAccounts" :key="acc.id || acc.name" :value="acc.name">
             {{ acc.name }}
@@ -302,9 +291,9 @@ const formatCurrency = (val) => {
         <input
           v-model="quickForm.description"
           type="text"
-          placeholder="사용처 / 항목 (예: 네이버 올리브유)"
+          placeholder="사용처 / 내용 (예: 네이버 올리브유)"
           required
-          class="sm:col-span-3 ts-input"
+          class="col-span-2 sm:col-span-3 ts-input"
         />
 
         <input
@@ -313,20 +302,20 @@ const formatCurrency = (val) => {
           placeholder="금액 (원)"
           required
           min="1"
-          class="sm:col-span-2 ts-input font-mono font-semibold tabular-nums"
+          class="col-span-1 sm:col-span-2 ts-input font-mono font-bold tabular-nums"
         />
 
         <input
           v-model="quickForm.memo"
           type="text"
-          placeholder="세부내용 / 메모 (선택)"
-          class="sm:col-span-2 ts-input"
+          placeholder="메모 (선택)"
+          class="col-span-1 sm:col-span-2 ts-input"
         />
 
         <button
           type="submit"
           :disabled="isAddingQuick"
-          class="sm:col-span-1 btn btn--primary"
+          class="col-span-2 sm:col-span-1 btn btn--primary"
         >
           <span v-if="isAddingQuick" class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
           <span v-else>추가</span>
@@ -335,17 +324,19 @@ const formatCurrency = (val) => {
     </section>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 4] 소비 항목(계좌)별 필터 탭 버튼                           -->
+    <!-- [UI 영역 4] 토스 다크 소비 항목(계좌) 필터 칩 바                      -->
     <!-- ================================================================== -->
-    <div class="flex items-center gap-2 overflow-x-auto pb-1 select-none">
+    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 select-none">
       <button
         @click="activeTab = 'ALL'"
         :class="[
-          'btn',
-          activeTab === 'ALL' ? 'btn--primary' : 'btn--secondary'
+          'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 border',
+          activeTab === 'ALL'
+            ? 'bg-[#F9FAFB] text-[#0B0D11] border-[#F9FAFB]'
+            : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
         ]"
       >
-        전체 보기 ({{ transactions.length }})
+        전체 ({{ transactions.length }})
       </button>
 
       <button
@@ -353,48 +344,50 @@ const formatCurrency = (val) => {
         :key="acc.id || acc.name"
         @click="activeTab = acc.name"
         :class="[
-          'btn',
-          activeTab === acc.name ? 'btn--primary' : 'btn--secondary'
+          'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 border',
+          activeTab === acc.name
+            ? 'bg-[#3182F6] text-white border-[#3182F6]'
+            : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
         ]"
       >
         <span>{{ acc.name }}</span>
-        <span class="opacity-75 font-mono tabular-nums">
+        <span class="opacity-85 font-mono text-[13px] tabular-nums">
           {{ formatCurrency(accountTotals[acc.name] || 0) }}
         </span>
       </button>
     </div>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 5] 소비내역 상세 데이터 테이블                               -->
+    <!-- [UI 영역 5] 소비내역 피드 (모바일 리스트 뷰 + 데스크톱 클린 테이블)     -->
     <!-- ================================================================== -->
     <section class="ts-card overflow-hidden" aria-label="소비 내역 목록">
-      <div class="p-5 border-b border-[#141413]/12 flex items-center justify-between bg-white">
-        <div class="flex items-baseline gap-2.5">
-          <h3 class="font-bold text-[#141413] text-[16px]">
-            {{ activeTab === 'ALL' ? '전체 소비 목록' : `${activeTab} 소비 목록` }}
+      <div class="p-5 border-b border-white/[0.07] flex items-center justify-between bg-[#151821]">
+        <div class="flex items-baseline gap-2">
+          <h3 class="font-extrabold text-[#F9FAFB] text-[17px]">
+            {{ activeTab === 'ALL' ? '전체 소비 내역' : `${activeTab} 내역` }}
           </h3>
-          <span class="text-[13px] text-[#575653] tabular-nums">
-            총 {{ filteredTransactions.length }}건
+          <span class="text-[13px] font-bold text-[#8B95A1] tabular-nums">
+            {{ filteredTransactions.length }}건
           </span>
         </div>
 
-        <div class="text-[14px] font-semibold text-[#141413]">
-          선택 합계:
-          <span class="font-bold font-mono text-[#0a4b49] tabular-nums ml-1">
+        <div class="text-[14px] font-bold text-[#8B95A1]">
+          합계
+          <span class="font-extrabold font-mono text-[#64A8FF] tabular-nums ml-1">
             {{ formatCurrency(filteredTransactions.reduce((s, t) => s + (Number(t.amount) || 0), 0)) }}
           </span>
         </div>
       </div>
 
       <!-- 로딩 / 에러 / 빈 내역 안내 -->
-      <div v-if="loading" class="p-12 text-center text-[14px] text-[#575653]">
+      <div v-if="loading" class="p-12 text-center text-[14px] text-[#8B95A1]">
         소비 내역을 불러오는 중입니다...
       </div>
-      <div v-else-if="error" class="p-4 bg-[#fef2f2] text-[#b91c1c] text-[13px] text-center border-b border-[#b91c1c]/20">
+      <div v-else-if="error" class="p-4 bg-[#F04452]/15 text-[#FF6B76] text-[13px] font-semibold text-center">
         {{ error }}
       </div>
-      <div v-else-if="filteredTransactions.length === 0" class="py-16 text-center text-[#575653] space-y-3">
-        <p class="text-[14px] font-medium">해당 월에 등록된 소비 내역이 없습니다.</p>
+      <div v-else-if="filteredTransactions.length === 0" class="py-16 text-center text-[#8B95A1] space-y-3">
+        <p class="text-[14px] font-semibold">아직 기록된 소비 내역이 없어요.</p>
         <button
           @click="openCreateModal"
           class="btn btn--secondary"
@@ -403,72 +396,117 @@ const formatCurrency = (val) => {
         </button>
       </div>
 
-      <!-- 소비내역 테이블 본문 -->
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-left text-[13px] border-collapse font-sans">
-          <thead>
-            <tr class="bg-[#F7F6F2] text-[#141413] font-semibold border-b border-[#141413]/15 select-none">
-              <th class="p-3.5 w-36 min-w-[120px]">거래 일자</th>
-              <th class="p-3.5 w-40 min-w-[130px]">소비 항목(계좌)</th>
-              <th class="p-3.5 min-w-[200px]">사용처 / 내용</th>
-              <th class="p-3.5 min-w-[160px]">세부 내용 / 메모</th>
-              <th class="p-3.5 w-36 min-w-[120px] text-right">지출 금액</th>
-              <th class="p-3.5 w-24 text-center">관리</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#141413]/8">
-            <tr
-              v-for="item in filteredTransactions"
-              :key="item.id"
-              class="bg-white hover:bg-[#F7F6F2]/60 transition-colors group"
-            >
-              <td class="p-3.5 text-[#575653] font-medium whitespace-nowrap tabular-nums">
-                {{ formatDateDisplay(item.transactionDate) }}
-              </td>
-
-              <td class="p-3.5 whitespace-nowrap">
-                <span class="px-2.5 py-1 rounded-[4px] text-[13px] font-medium bg-[#F7F6F2] text-[#141413] border border-[#141413]/15 inline-block">
+      <template v-else>
+        <!-- [모바일 전용] 토스 다크 가계부 피드 리스트 -->
+        <div class="md:hidden divide-y divide-white/[0.06]">
+          <div
+            v-for="item in filteredTransactions"
+            :key="`mob-${item.id}`"
+            class="p-4 bg-[#151821] flex items-center justify-between gap-3"
+          >
+            <div class="min-w-0 flex-1 space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-[6px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] shrink-0">
                   {{ item.accountName || '미지정' }}
                 </span>
-              </td>
+                <span class="font-extrabold text-[#F9FAFB] text-[15px] truncate">
+                  {{ item.description }}
+                </span>
+              </div>
+              <div class="text-[13px] text-[#8B95A1] flex items-center gap-1.5 tabular-nums">
+                <span>{{ formatDateDisplay(item.transactionDate) }}</span>
+                <span v-if="item.memo">· {{ item.memo }}</span>
+              </div>
+            </div>
 
-              <td class="p-3.5 font-semibold text-[#141413] text-[14px]">
-                {{ item.description }}
-              </td>
-
-              <td class="p-3.5 text-[#575653]">
-                {{ item.memo || '-' }}
-              </td>
-
-              <td class="p-3.5 text-right font-bold font-mono text-[#141413] text-[14px] whitespace-nowrap tabular-nums">
+            <div class="text-right shrink-0 space-y-1">
+              <div class="font-extrabold font-mono text-[#F9FAFB] text-[16px] tabular-nums">
                 {{ Number(item.amount || 0).toLocaleString('ko-KR') }}원
-              </td>
+              </div>
+              <div class="flex items-center justify-end gap-2 text-[13px]">
+                <button
+                  @click="openEditModal(item)"
+                  class="font-bold text-[#8B95A1] hover:text-[#F9FAFB] cursor-pointer"
+                >
+                  수정
+                </button>
+                <button
+                  @click="handleDelete(item)"
+                  class="font-bold text-[#FF6B76] cursor-pointer"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <td class="p-3.5 text-center whitespace-nowrap">
-                <div class="flex items-center justify-center gap-2">
-                  <button
-                    @click="openEditModal(item)"
-                    class="text-[13px] font-medium text-[#575653] hover:text-[#141413] hover:underline cursor-pointer"
-                  >
-                    수정
-                  </button>
-                  <span class="text-[#141413]/20">|</span>
-                  <button
-                    @click="handleDelete(item)"
-                    class="text-[13px] font-medium text-[#b91c1c] hover:underline cursor-pointer"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <!-- [데스크톱 전용] 클린 다크 소비내역 테이블 -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-left text-[14px] border-collapse font-sans">
+            <thead>
+              <tr class="bg-[#1C202B] text-[#8B95A1] text-[13px] font-bold border-b border-white/[0.07] select-none">
+                <th class="py-3.5 px-5 w-40">거래 일자</th>
+                <th class="py-3.5 px-4 w-44">소비 항목(계좌)</th>
+                <th class="py-3.5 px-4">사용처 / 내용</th>
+                <th class="py-3.5 px-4">세부 내용 / 메모</th>
+                <th class="py-3.5 px-5 w-40 text-right">지출 금액</th>
+                <th class="py-3.5 px-5 w-28 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/[0.05]">
+              <tr
+                v-for="item in filteredTransactions"
+                :key="item.id"
+                class="bg-[#151821] hover:bg-[#1C202B] transition-colors group"
+              >
+                <td class="py-3.5 px-5 text-[#8B95A1] font-semibold whitespace-nowrap tabular-nums">
+                  {{ formatDateDisplay(item.transactionDate) }}
+                </td>
+
+                <td class="py-3.5 px-4 whitespace-nowrap">
+                  <span class="px-2.5 py-1 rounded-[8px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] inline-block">
+                    {{ item.accountName || '미지정' }}
+                  </span>
+                </td>
+
+                <td class="py-3.5 px-4 font-extrabold text-[#F9FAFB] text-[15px]">
+                  {{ item.description }}
+                </td>
+
+                <td class="py-3.5 px-4 text-[#8B95A1] text-[13px]">
+                  {{ item.memo || '-' }}
+                </td>
+
+                <td class="py-3.5 px-5 text-right font-extrabold font-mono text-[#F9FAFB] text-[15px] whitespace-nowrap tabular-nums">
+                  {{ Number(item.amount || 0).toLocaleString('ko-KR') }}원
+                </td>
+
+                <td class="py-3.5 px-5 text-center whitespace-nowrap">
+                  <div class="flex items-center justify-center gap-2.5">
+                    <button
+                      @click="openEditModal(item)"
+                      class="text-[13px] font-bold text-[#8B95A1] hover:text-[#F9FAFB] hover:underline cursor-pointer"
+                    >
+                      수정
+                    </button>
+                    <button
+                      @click="handleDelete(item)"
+                      class="text-[13px] font-bold text-[#FF6B76] hover:underline cursor-pointer"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
     </section>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 6] 소비내역 등록 / 수정 팝업 모달                           -->
+    <!-- [UI 영역 6] 소비내역 등록 / 수정 모달 (모바일 바텀시트 지원)          -->
     <!-- ================================================================== -->
     <TransactionModal
       :is-open="modalState.isOpen"

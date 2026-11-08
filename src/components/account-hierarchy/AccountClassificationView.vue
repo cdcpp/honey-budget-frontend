@@ -1,23 +1,26 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5 sm:space-y-6">
     <!-- ================================================================== -->
-    <!-- [UI 영역 1] 상단 헤더 및 브레드크럼(전체 > 그룹 > 카테고리) 경로 바     -->
+    <!-- [UI 영역 1] 토스 다크 스타일 상단 헤더 및 브레드크럼(전체 > 그룹 > 카테고리) -->
     <!-- ================================================================== -->
-    <header class="pb-6 border-b border-[#141413]/12">
-      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <header class="pt-1 pb-2 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <p class="text-[13px] font-medium text-[#575653] mb-1">계좌 분류 체계 (3단계)</p>
-          <h1 class="text-[28px] sm:text-[32px] font-bold tracking-tight text-[#141413] leading-tight">
+          <span class="inline-block text-[13px] font-bold text-[#64A8FF] mb-1">
+            계좌 분류 체계 (3단계)
+          </span>
+          <h1 class="text-[24px] sm:text-[28px] font-extrabold tracking-tight text-[#F9FAFB] leading-snug">
             카테고리 관리
           </h1>
-          <p class="text-[15px] text-[#575653] mt-1.5">
-            그룹 &rsaquo; 카테고리 &rsaquo; 계좌 순으로 선택해 조회하고, 각 단계에서 등록·수정·삭제합니다.
+          <p class="text-[14px] text-[#8B95A1] mt-1 m-0">
+            그룹 &rsaquo; 카테고리 &rsaquo; 계좌 순으로 선택해 조회하고, 각 단계에서 등록·수정·삭제해요.
           </p>
         </div>
+
         <div class="flex items-center gap-2">
           <button
             @click="loadHierarchy"
-            class="btn btn--secondary"
+            class="btn btn--secondary !min-h-[38px]"
             title="백엔드에서 최신 데이터를 다시 불러옵니다"
           >
             <span>새로고침</span>
@@ -25,43 +28,95 @@
         </div>
       </div>
 
-      <!-- 현재 선택된 그룹과 카테고리 경로를 보여주는 브레드크럼 -->
-      <nav class="flex items-center gap-2 text-[14px] font-medium mt-5 pt-4 border-t border-[#141413]/10 text-[#575653]">
+      <!-- 현재 선택된 경로 브레드크럼 카드 -->
+      <nav class="ts-card px-4 py-3 flex items-center gap-2 text-[14px] font-bold text-[#8B95A1] overflow-x-auto no-scrollbar">
         <button
           @click="resetToAll"
-          class="hover:text-[#141413] hover:underline transition-colors cursor-pointer"
+          class="hover:text-[#F9FAFB] transition-colors cursor-pointer shrink-0 bg-transparent border-0 p-0 font-bold text-[#8B95A1]"
         >
           <span>전체</span>
         </button>
-        <span class="text-[#141413]/30">&rsaquo;</span>
+        <span class="text-[#6B7684]">&rsaquo;</span>
 
         <span
           v-if="selectedGroup"
-          class="cursor-pointer hover:text-[#141413] font-semibold text-[#141413] transition-colors"
+          class="cursor-pointer font-extrabold text-[#F9FAFB] shrink-0"
           @click="selectGroup(selectedGroup)"
         >
           {{ selectedGroup.categoryGroupName }}
-          <span class="text-[13px] font-normal text-[#575653] font-mono tabular-nums">({{ selectedGroup.categoryGroupCode }})</span>
+          <span class="text-[13px] font-semibold text-[#8B95A1] font-mono tabular-nums">({{ selectedGroup.categoryGroupCode }})</span>
         </span>
-        <span v-else class="text-[#575653]">그룹 미선택</span>
+        <span v-else class="text-[#6B7684] shrink-0">그룹 미선택</span>
 
         <template v-if="selectedCategory">
-          <span class="text-[#141413]/30">&rsaquo;</span>
-          <span class="text-[#0a4b49] font-bold">
+          <span class="text-[#6B7684]">&rsaquo;</span>
+          <span class="px-2.5 py-0.5 rounded-full bg-[#3182F6]/20 text-[#64A8FF] font-extrabold shrink-0">
             {{ selectedCategory.categoryName }}
-            <span class="text-[13px] font-normal text-[#575653] font-mono tabular-nums">({{ selectedCategory.categoryCode }})</span>
+            <span class="text-[13px] font-semibold font-mono tabular-nums">({{ selectedCategory.categoryCode }})</span>
           </span>
         </template>
       </nav>
+
+      <!-- 모바일 전용 단계 빠른 이동 탭 (데스크톱에서는 3컬럼 동시 노출) -->
+      <div class="flex lg:hidden items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          @click="mobileStep = 'ALL'"
+          :class="[
+            'px-3.5 py-1.5 rounded-full text-[13px] font-bold cursor-pointer border shrink-0',
+            mobileStep === 'ALL'
+              ? 'bg-[#F9FAFB] text-[#0B0D11] border-[#F9FAFB]'
+              : 'bg-[#151821] text-[#8B95A1] border-white/[0.08]'
+          ]"
+        >
+          전체 단계 보기
+        </button>
+        <button
+          type="button"
+          @click="mobileStep = 1"
+          :class="[
+            'px-3.5 py-1.5 rounded-full text-[13px] font-bold cursor-pointer border shrink-0',
+            mobileStep === 1
+              ? 'bg-[#3182F6] text-white border-[#3182F6]'
+              : 'bg-[#151821] text-[#8B95A1] border-white/[0.08]'
+          ]"
+        >
+          1. 그룹 ({{ groups.length }})
+        </button>
+        <button
+          type="button"
+          @click="mobileStep = 2"
+          :class="[
+            'px-3.5 py-1.5 rounded-full text-[13px] font-bold cursor-pointer border shrink-0',
+            mobileStep === 2
+              ? 'bg-[#3182F6] text-white border-[#3182F6]'
+              : 'bg-[#151821] text-[#8B95A1] border-white/[0.08]'
+          ]"
+        >
+          2. 카테고리 ({{ currentCategories.length }})
+        </button>
+        <button
+          type="button"
+          @click="mobileStep = 3"
+          :class="[
+            'px-3.5 py-1.5 rounded-full text-[13px] font-bold cursor-pointer border shrink-0',
+            mobileStep === 3
+              ? 'bg-[#3182F6] text-white border-[#3182F6]'
+              : 'bg-[#151821] text-[#8B95A1] border-white/[0.08]'
+          ]"
+        >
+          3. 계좌 ({{ currentAccounts.length }})
+        </button>
+      </div>
     </header>
 
     <!-- 서버 통신 오류 배너 -->
     <div
       v-if="error"
-      class="p-4 bg-[#fef2f2] border border-[#b91c1c]/25 rounded-[8px] text-[#b91c1c] text-[14px] flex items-center justify-between"
+      class="p-4 bg-[#F04452]/15 border border-[#F04452]/25 rounded-[16px] text-[#FF6B76] text-[14px] font-semibold flex items-center justify-between"
     >
       <span>{{ error }}</span>
-      <button @click="loadHierarchy" class="text-[13px] font-semibold underline cursor-pointer">
+      <button @click="loadHierarchy" class="text-[13px] font-extrabold underline cursor-pointer">
         다시 시도
       </button>
     </div>
@@ -69,14 +124,16 @@
     <!-- ================================================================== -->
     <!-- [UI 영역 2] 3단계 컬럼 그리드 (Level 1 그룹 / Level 2 카테고리 / Level 3 계좌) -->
     <!-- ================================================================== -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
       <!-- ==================== [컬럼 1] LEVEL 1: 그룹 (Group) ==================== -->
-      <section class="lg:col-span-3 ts-card p-5 flex flex-col min-h-[580px]">
-        <!-- 컬럼 1 헤더: 제목 + 개수 뱃지 + 등록/삭제 버튼 -->
-        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-[#141413]/12">
+      <section
+        v-show="mobileStep === 'ALL' || mobileStep === 1"
+        class="lg:col-span-3 ts-card p-5 flex flex-col lg:min-h-[560px]"
+      >
+        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-white/[0.07]">
           <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-bold text-[#141413] tracking-tight">레벨 1 · 그룹</h2>
-            <span class="px-2 py-0.5 rounded-[4px] text-[13px] font-semibold font-mono bg-[#F7F6F2] text-[#575653] tabular-nums">
+            <h2 class="text-[16px] font-extrabold text-[#F9FAFB] tracking-tight">레벨 1 · 그룹</h2>
+            <span class="px-2 py-0.5 rounded-full text-[13px] font-extrabold font-mono bg-[#1C202B] text-[#D1D6DB] tabular-nums">
               {{ groups.length }}
             </span>
           </div>
@@ -84,7 +141,7 @@
           <div class="flex items-center gap-1.5">
             <button
               @click="openModal('group-create')"
-              class="btn btn--primary bg-brand-primary !min-h-[32px] !px-3"
+              class="btn btn--primary bg-brand-primary !min-h-[34px] !px-3 !text-[13px]"
               title="새 그룹 등록"
             >
               <span>등록</span>
@@ -92,7 +149,7 @@
             <button
               @click="selectedGroup && handleDeleteGroup(selectedGroup)"
               :disabled="!selectedGroup"
-              class="btn btn--danger-outline !min-h-[32px] !px-3"
+              class="btn btn--danger-outline !min-h-[34px] !px-3 !text-[13px]"
               title="선택된 그룹 삭제"
             >
               <span>삭제</span>
@@ -100,14 +157,13 @@
           </div>
         </div>
 
-        <!-- 컬럼 1 본문: 대분류 그룹 카드 리스트 -->
-        <div class="space-y-2.5 flex-1 overflow-y-auto max-h-[720px] pr-1">
+        <div class="space-y-2.5 flex-1 overflow-y-auto max-h-[680px] pr-0.5">
           <div
             v-if="groups.length === 0"
-            class="h-64 flex flex-col items-center justify-center text-[#575653] text-center p-4 border border-dashed border-[#141413]/20 rounded-[8px]"
+            class="h-52 flex flex-col items-center justify-center text-[#8B95A1] text-center p-4 bg-[#1C202B]/60 rounded-[16px]"
           >
-            <p class="text-[13px]">등록된 그룹이 없습니다.</p>
-            <button @click="openModal('group-create')" class="mt-3 text-[13px] text-[#0a4b49] font-semibold underline cursor-pointer">
+            <p class="text-[13px] font-semibold">등록된 그룹이 없습니다.</p>
+            <button @click="openModal('group-create')" class="mt-2.5 text-[13px] text-[#64A8FF] font-extrabold underline cursor-pointer">
               그룹 추가하기
             </button>
           </div>
@@ -115,38 +171,37 @@
           <div
             v-for="grp in groups"
             :key="grp.id"
-            @click="selectGroup(grp)"
+            @click="handleSelectGroup(grp)"
             :class="[
-              'p-4 rounded-[8px] cursor-pointer border relative group flex flex-col justify-between gap-3 ts-card-interactive',
+              'p-4 rounded-[16px] cursor-pointer border relative group flex flex-col justify-between gap-3 ts-card-interactive',
               selectedGroupId === grp.id
-                ? '!bg-[#0a4b49] text-white !border-[#0a4b49]'
-                : 'bg-white text-[#141413]'
+                ? '!bg-[#3182F6] text-white !border-[#3182F6]'
+                : 'bg-[#1C202B] text-[#F9FAFB] border-white/[0.06]'
             ]"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span
                   :class="[
-                    'px-2 py-0.5 rounded-[4px] text-[13px] font-semibold font-mono tabular-nums shrink-0',
+                    'px-2 py-0.5 rounded-[6px] text-[13px] font-bold font-mono tabular-nums shrink-0',
                     selectedGroupId === grp.id
-                      ? 'bg-white/15 text-white border border-white/25'
-                      : 'bg-[#F7F6F2] text-[#575653] border border-[#141413]/10'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-[#151821] text-[#8B95A1]'
                   ]"
                 >
                   {{ grp.categoryGroupCode }}
                 </span>
-                <span class="font-bold text-[15px] tracking-tight truncate">
+                <span class="font-extrabold text-[15px] tracking-tight truncate">
                   {{ grp.categoryGroupName }}
                 </span>
               </div>
 
-              <!-- 그룹 수정/삭제 액션 (@click.stop으로 카드 선택 이벤트 전파 차단) -->
               <div class="flex items-center gap-2 shrink-0" @click.stop>
                 <button
                   @click="openModal('group-edit', grp)"
                   :class="[
-                    'text-[13px] font-medium hover:underline cursor-pointer',
-                    selectedGroupId === grp.id ? 'text-white/90 hover:text-white' : 'text-[#575653] hover:text-[#141413]'
+                    'text-[13px] font-bold hover:underline cursor-pointer',
+                    selectedGroupId === grp.id ? 'text-white/90 hover:text-white' : 'text-[#8B95A1] hover:text-[#F9FAFB]'
                   ]"
                   title="그룹 수정"
                 >
@@ -155,8 +210,8 @@
                 <button
                   @click="handleDeleteGroup(grp)"
                   :class="[
-                    'text-[13px] font-medium hover:underline cursor-pointer',
-                    selectedGroupId === grp.id ? 'text-white/80 hover:text-white' : 'text-[#b91c1c]'
+                    'text-[13px] font-bold hover:underline cursor-pointer',
+                    selectedGroupId === grp.id ? 'text-white/85 hover:text-white' : 'text-[#FF6B76]'
                   ]"
                   title="그룹 삭제"
                 >
@@ -167,10 +222,10 @@
 
             <div
               :class="[
-                'text-[13px] flex items-center justify-between pt-2 border-t tabular-nums',
+                'text-[13px] font-semibold flex items-center justify-between pt-2 border-t tabular-nums',
                 selectedGroupId === grp.id
-                  ? 'border-white/20 text-white/85'
-                  : 'border-[#141413]/8 text-[#575653]'
+                  ? 'border-white/20 text-white/90'
+                  : 'border-white/[0.06] text-[#8B95A1]'
               ]"
             >
               <span>{{ (grp.categories || []).length }}개 카테고리</span>
@@ -181,12 +236,14 @@
       </section>
 
       <!-- ==================== [컬럼 2] LEVEL 2: 카테고리 (Category) ==================== -->
-      <section class="lg:col-span-4 ts-card p-5 flex flex-col min-h-[580px]">
-        <!-- 컬럼 2 헤더: 제목 + 개수 뱃지 + 등록/삭제 버튼 -->
-        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-[#141413]/12">
+      <section
+        v-show="mobileStep === 'ALL' || mobileStep === 2"
+        class="lg:col-span-4 ts-card p-5 flex flex-col lg:min-h-[560px]"
+      >
+        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-white/[0.07]">
           <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-bold text-[#141413] tracking-tight">레벨 2 · 카테고리</h2>
-            <span class="px-2 py-0.5 rounded-[4px] text-[13px] font-semibold font-mono bg-[#F7F6F2] text-[#575653] tabular-nums">
+            <h2 class="text-[16px] font-extrabold text-[#F9FAFB] tracking-tight">레벨 2 · 카테고리</h2>
+            <span class="px-2 py-0.5 rounded-full text-[13px] font-extrabold font-mono bg-[#1C202B] text-[#D1D6DB] tabular-nums">
               {{ currentCategories.length }}
             </span>
           </div>
@@ -195,7 +252,7 @@
             <button
               @click="openModal('category-create')"
               :disabled="!selectedGroup"
-              class="btn btn--primary !min-h-[32px] !px-3"
+              class="btn btn--primary !min-h-[34px] !px-3 !text-[13px]"
               title="새 카테고리 등록"
             >
               <span>등록</span>
@@ -203,7 +260,7 @@
             <button
               @click="selectedCategory && handleDeleteCategory(selectedCategory)"
               :disabled="!selectedCategory"
-              class="btn btn--danger-outline !min-h-[32px] !px-3"
+              class="btn btn--danger-outline !min-h-[34px] !px-3 !text-[13px]"
               title="선택된 카테고리 삭제"
             >
               <span>삭제</span>
@@ -211,23 +268,22 @@
           </div>
         </div>
 
-        <!-- 컬럼 2 본문: 선택된 그룹에 속한 중분류 카테고리 카드 리스트 -->
-        <div class="space-y-2.5 flex-1 overflow-y-auto max-h-[720px] pr-1">
+        <div class="space-y-2.5 flex-1 overflow-y-auto max-h-[680px] pr-0.5">
           <div
             v-if="!selectedGroup"
-            class="h-64 flex flex-col items-center justify-center text-[#575653] text-center p-4 border border-dashed border-[#141413]/20 rounded-[8px]"
+            class="h-52 flex flex-col items-center justify-center text-[#8B95A1] text-center p-4 bg-[#1C202B]/60 rounded-[16px]"
           >
-            <p class="text-[13px] font-medium">왼쪽에서 그룹을 먼저 선택해주세요.</p>
+            <p class="text-[13px] font-semibold">왼쪽에서 그룹을 먼저 선택해주세요.</p>
           </div>
 
           <div
             v-else-if="currentCategories.length === 0"
-            class="h-64 flex flex-col items-center justify-center text-[#575653] text-center p-4 border border-dashed border-[#141413]/20 rounded-[8px]"
+            class="h-52 flex flex-col items-center justify-center text-[#8B95A1] text-center p-4 bg-[#1C202B]/60 rounded-[16px]"
           >
-            <p class="text-[13px] font-medium">[{{ selectedGroup.categoryGroupName }}] 그룹에 등록된 카테고리가 없습니다.</p>
+            <p class="text-[13px] font-semibold">[{{ selectedGroup.categoryGroupName }}] 그룹에 등록된 카테고리가 없습니다.</p>
             <button
               @click="openModal('category-create')"
-              class="mt-3 text-[13px] text-[#0a4b49] font-semibold underline cursor-pointer"
+              class="mt-2.5 text-[13px] text-[#64A8FF] font-extrabold underline cursor-pointer"
             >
               새 카테고리 등록하기
             </button>
@@ -236,27 +292,27 @@
           <div
             v-for="cat in currentCategories"
             :key="cat.id"
-            @click="selectCategory(cat)"
+            @click="handleSelectCategory(cat)"
             :class="[
-              'p-4 rounded-[8px] cursor-pointer border relative group flex flex-col justify-between gap-3 ts-card-interactive',
+              'p-4 rounded-[16px] cursor-pointer border relative group flex flex-col justify-between gap-3 ts-card-interactive',
               selectedCategoryId === cat.id
-                ? '!bg-[#F7F6F2] !border-[#0a4b49] ring-1 ring-[#0a4b49]'
-                : 'bg-white text-[#141413]'
+                ? '!bg-[#1E2C46] !border-[#3182F6]'
+                : 'bg-[#1C202B] text-[#F9FAFB] border-white/[0.06]'
             ]"
           >
             <div class="flex items-start justify-between gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <span
                   :class="[
-                    'px-2 py-0.5 rounded-[4px] text-[13px] font-semibold font-mono tabular-nums shrink-0',
+                    'px-2 py-0.5 rounded-[6px] text-[13px] font-bold font-mono tabular-nums shrink-0',
                     selectedCategoryId === cat.id
-                      ? 'bg-[#0a4b49] text-white'
-                      : 'bg-[#F7F6F2] text-[#575653] border border-[#141413]/10'
+                      ? 'bg-[#3182F6] text-white'
+                      : 'bg-[#151821] text-[#8B95A1]'
                   ]"
                 >
                   {{ cat.categoryCode }}
                 </span>
-                <span class="font-bold text-[15px] tracking-tight text-[#141413] truncate">
+                <span class="font-extrabold text-[15px] tracking-tight text-[#F9FAFB] truncate">
                   {{ cat.categoryName }}
                 </span>
               </div>
@@ -264,14 +320,14 @@
               <div class="flex items-center gap-2 shrink-0" @click.stop>
                 <button
                   @click="openModal('category-edit', cat)"
-                  class="text-[13px] font-medium text-[#575653] hover:text-[#141413] hover:underline cursor-pointer"
+                  class="text-[13px] font-bold text-[#8B95A1] hover:text-[#F9FAFB] hover:underline cursor-pointer"
                   title="카테고리 수정"
                 >
                   수정
                 </button>
                 <button
                   @click="handleDeleteCategory(cat)"
-                  class="text-[13px] font-medium text-[#b91c1c] hover:underline cursor-pointer"
+                  class="text-[13px] font-bold text-[#FF6B76] hover:underline cursor-pointer"
                   title="카테고리 삭제"
                 >
                   삭제
@@ -279,20 +335,23 @@
               </div>
             </div>
 
-            <div class="text-[13px] flex items-center justify-between pt-2 border-t border-[#141413]/8 text-[#575653] tabular-nums">
-              <span>계좌 {{ (cat.accounts || []).length }}개</span>
+            <div class="text-[13px] font-semibold flex items-center justify-between pt-2 border-t border-white/[0.06] text-[#8B95A1] tabular-nums">
+              <span>연결된 계좌 {{ (cat.accounts || []).length }}개</span>
+              <span v-if="selectedCategoryId === cat.id" class="text-[#64A8FF] font-extrabold">선택됨</span>
             </div>
           </div>
         </div>
       </section>
 
       <!-- ==================== [컬럼 3] LEVEL 3: 계좌 (Account) ==================== -->
-      <section class="lg:col-span-5 ts-card p-5 flex flex-col min-h-[580px]">
-        <!-- 컬럼 3 헤더: 제목 + 개수 뱃지 + 등록/삭제 버튼 -->
-        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-[#141413]/12">
+      <section
+        v-show="mobileStep === 'ALL' || mobileStep === 3"
+        class="lg:col-span-5 ts-card p-5 flex flex-col lg:min-h-[560px]"
+      >
+        <div class="flex items-center justify-between mb-4 pb-3.5 border-b border-white/[0.07]">
           <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-bold text-[#141413] tracking-tight">레벨 3 · 계좌</h2>
-            <span class="px-2 py-0.5 rounded-[4px] text-[13px] font-semibold font-mono bg-[#F7F6F2] text-[#575653] tabular-nums">
+            <h2 class="text-[16px] font-extrabold text-[#F9FAFB] tracking-tight">레벨 3 · 계좌</h2>
+            <span class="px-2 py-0.5 rounded-full text-[13px] font-extrabold font-mono bg-[#1C202B] text-[#D1D6DB] tabular-nums">
               {{ currentAccounts.length }}
             </span>
           </div>
@@ -301,7 +360,7 @@
             <button
               @click="openModal('account-create')"
               :disabled="!selectedCategory"
-              class="btn btn--primary !min-h-[32px] !px-3"
+              class="btn btn--primary !min-h-[34px] !px-3 !text-[13px]"
               title="새 계좌 등록"
             >
               <span>등록</span>
@@ -309,7 +368,7 @@
             <button
               @click="handleHeaderDeleteAccount"
               :disabled="!selectedCategory || currentAccounts.length === 0"
-              class="btn btn--danger-outline !min-h-[32px] !px-3"
+              class="btn btn--danger-outline !min-h-[34px] !px-3 !text-[13px]"
               title="선택된 계좌 삭제"
             >
               <span>삭제</span>
@@ -317,23 +376,22 @@
           </div>
         </div>
 
-        <!-- 컬럼 3 본문: 선택된 카테고리에 속한 소분류 계좌 카드 리스트 -->
-        <div class="space-y-3 flex-1 overflow-y-auto max-h-[720px] pr-1">
+        <div class="space-y-2.5 flex-1 overflow-y-auto max-h-[680px] pr-0.5">
           <div
             v-if="!selectedCategory"
-            class="h-64 flex flex-col items-center justify-center text-[#575653] text-center p-4 border border-dashed border-[#141413]/20 rounded-[8px]"
+            class="h-52 flex flex-col items-center justify-center text-[#8B95A1] text-center p-4 bg-[#1C202B]/60 rounded-[16px]"
           >
-            <p class="text-[13px] font-medium">카테고리를 먼저 선택해주세요.</p>
+            <p class="text-[13px] font-semibold">카테고리를 먼저 선택해주세요.</p>
           </div>
 
           <div
             v-else-if="currentAccounts.length === 0"
-            class="h-64 flex flex-col items-center justify-center text-[#575653] text-center p-4 border border-dashed border-[#141413]/20 rounded-[8px]"
+            class="h-52 flex flex-col items-center justify-center text-[#8B95A1] text-center p-4 bg-[#1C202B]/60 rounded-[16px]"
           >
-            <p class="text-[13px] font-medium">[{{ selectedCategory.categoryName }}]에 등록된 계좌가 없습니다.</p>
+            <p class="text-[13px] font-semibold">[{{ selectedCategory.categoryName }}]에 등록된 계좌가 없습니다.</p>
             <button
               @click="openModal('account-create')"
-              class="mt-3 text-[13px] text-[#0a4b49] font-semibold underline cursor-pointer"
+              class="mt-2.5 text-[13px] text-[#64A8FF] font-extrabold underline cursor-pointer"
             >
               새 계좌 등록하기
             </button>
@@ -344,29 +402,29 @@
             :key="acc.id"
             @click="selectAccount(acc)"
             :class="[
-              'p-4 rounded-[8px] border space-y-3 cursor-pointer ts-card-interactive',
+              'p-4 rounded-[16px] border space-y-2.5 cursor-pointer ts-card-interactive',
               selectedAccountId === acc.id
-                ? '!bg-[#F7F6F2] !border-[#0a4b49] ring-1 ring-[#0a4b49]'
-                : 'bg-white'
+                ? '!bg-[#1E2C46] !border-[#3182F6]'
+                : 'bg-[#1C202B] border-white/[0.06]'
             ]"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="flex items-center gap-2">
-                  <h3 class="font-bold text-[15px] text-[#141413] tracking-tight">{{ acc.accountName }}</h3>
+                  <h3 class="font-extrabold text-[15px] text-[#F9FAFB] tracking-tight">{{ acc.accountName }}</h3>
                   <span
                     :class="[
-                      'px-2 py-0.5 rounded-[4px] text-[13px] font-medium border',
+                      'px-2 py-0.5 rounded-full text-[13px] font-bold',
                       acc.useYn !== false
-                        ? 'bg-[#F7F6F2] text-[#0a4b49] border-[#0a4b49]/30'
-                        : 'bg-[#F7F6F2] text-[#575653] border-[#141413]/15'
+                        ? 'bg-[#3182F6]/20 text-[#64A8FF]'
+                        : 'bg-[#151821] text-[#8B95A1]'
                     ]"
                   >
                     {{ acc.useYn !== false ? '사용' : '해지' }}
                   </span>
                 </div>
-                <p class="text-[13px] text-[#575653] mt-1 flex items-center gap-1.5">
-                  <span class="font-medium text-[#141413]">{{ acc.institutionName }}</span>
+                <p class="text-[13px] text-[#8B95A1] mt-1 flex items-center gap-1.5 m-0">
+                  <span class="font-bold text-[#D1D6DB]">{{ acc.institutionName }}</span>
                   <span v-if="acc.accountNumber && acc.accountNumber !== '-'" class="font-mono tabular-nums">
                     · {{ acc.accountNumber }}
                   </span>
@@ -376,14 +434,13 @@
               <div class="flex items-center gap-2 shrink-0" @click.stop>
                 <button
                   @click="openModal('account-edit', acc)"
-                  class="text-[13px] font-medium text-[#575653] hover:text-[#141413] hover:underline cursor-pointer"
+                  class="text-[13px] font-bold text-[#8B95A1] hover:text-[#F9FAFB] hover:underline cursor-pointer"
                 >
                   수정
                 </button>
-                <span class="text-[#141413]/20">|</span>
                 <button
                   @click="handleDeleteAccount(acc)"
-                  class="text-[13px] font-medium text-[#b91c1c] hover:underline cursor-pointer"
+                  class="text-[13px] font-bold text-[#FF6B76] hover:underline cursor-pointer"
                 >
                   삭제
                 </button>
@@ -392,7 +449,7 @@
 
             <div
               v-if="acc.memo"
-              class="pt-2 border-t border-[#141413]/8 text-[13px] text-[#575653]"
+              class="pt-2 border-t border-white/[0.06] text-[13px] text-[#8B95A1]"
             >
               {{ acc.memo }}
             </div>
@@ -402,7 +459,7 @@
     </div>
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 3] 그룹 / 카테고리 / 계좌 통합 등록·수정 팝업 모달          -->
+    <!-- [UI 영역 3] 그룹 / 카테고리 / 계좌 통합 등록·수정 모달 (바텀시트 지원) -->
     <!-- ================================================================== -->
     <ClassificationModal
       :is-open="modalState.isOpen"
@@ -414,13 +471,14 @@
     />
 
     <!-- ================================================================== -->
-    <!-- [UI 영역 4] 우측 하단 작업 완료 토스트 알림 메시지                   -->
+    <!-- [UI 영역 4] 토스 다크 하단 플로팅 토스트 알림                        -->
     <!-- ================================================================== -->
     <transition name="toast">
       <div
         v-if="toastMessage"
-        class="fixed bottom-6 right-6 z-50 px-4 py-3 bg-[#141413] text-white text-[14px] font-medium rounded-[6px] shadow-lg flex items-center gap-2"
+        class="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#242938] border border-white/[0.12] text-[#F9FAFB] text-[14px] font-bold rounded-full shadow-2xl flex items-center gap-2 whitespace-nowrap"
       >
+        <span class="w-2 h-2 rounded-full bg-[#3182F6]"></span>
         <span>{{ toastMessage }}</span>
       </div>
     </transition>
@@ -443,7 +501,7 @@ import { useAccountClassification } from '../../composables/useAccountClassifica
 import ClassificationModal from './ClassificationModal.vue'
 
 // ============================================================================
-// [SECTION 1] Composable State & Actions (useAccountClassification 연동)
+// [SECTION 1] Composable State & Actions
 // ============================================================================
 const {
   groups,
@@ -472,14 +530,14 @@ const {
 } = useAccountClassification()
 
 // ============================================================================
-// [SECTION 2] Local UI State (토스트 알림, 선택된 계좌 ID, 통합 모달 상태)
+// [SECTION 2] Local UI State
 // ============================================================================
+const mobileStep = ref('ALL')
 const toastMessage = ref('')
 let toastTimer = null
 
-const selectedAccountId = ref(null) // Level 3 컬럼에서 클릭하여 선택된 계좌 ID
+const selectedAccountId = ref(null)
 
-/** ClassificationModal 열림 상태 및 동작 모드('group-create', 'category-edit' 등) */
 const modalState = ref({
   isOpen: false,
   mode: 'group-create',
@@ -487,15 +545,22 @@ const modalState = ref({
 })
 
 // ============================================================================
-// [SECTION 3] Lifecycle & Event Handlers (모달 오픈, 제출 분기, 단계별 삭제)
+// [SECTION 3] Lifecycle & Event Handlers
 // ============================================================================
+const handleSelectGroup = (grp) => {
+  selectGroup(grp)
+  if (mobileStep.value === 1) mobileStep.value = 2
+}
 
-/** Level 3 계좌 카드 클릭 시 선택 상태 저장 */
+const handleSelectCategory = (cat) => {
+  selectCategory(cat)
+  if (mobileStep.value === 2) mobileStep.value = 3
+}
+
 const selectAccount = (acc) => {
   selectedAccountId.value = acc.id
 }
 
-/** 우측 하단에 2.5초간 토스트 알림을 띄웁니다. */
 const showToast = (msg) => {
   toastMessage.value = msg
   if (toastTimer) clearTimeout(toastTimer)
@@ -504,11 +569,6 @@ const showToast = (msg) => {
   }, 2500)
 }
 
-/**
- * [등록/수정 모달 열기]
- * @param {'group-create'|'group-edit'|'category-create'|'category-edit'|'account-create'|'account-edit'} mode
- * @param {object} data - 수정 시 기존 항목 데이터
- */
 const openModal = (mode, data = {}) => {
   modalState.value = {
     isOpen: true,
@@ -521,12 +581,10 @@ const openModal = (mode, data = {}) => {
   }
 }
 
-/** 모달 닫기 */
 const closeModal = () => {
   modalState.value.isOpen = false
 }
 
-/** 모달에서 '등록하기 / 수정 완료' 제출 시 mode에 따라 알맞은 API 액션을 호출합니다. */
 const handleModalSubmit = async (formData) => {
   try {
     const { mode, data } = modalState.value
@@ -555,7 +613,6 @@ const handleModalSubmit = async (formData) => {
   }
 }
 
-/** [Level 1 그룹 삭제 확인 및 처리] */
 const handleDeleteGroup = async (grp) => {
   if (!grp) return
   const catCnt = (grp.categories || []).length
@@ -571,7 +628,6 @@ const handleDeleteGroup = async (grp) => {
   }
 }
 
-/** [Level 2 카테고리 삭제 확인 및 처리] */
 const handleDeleteCategory = async (cat) => {
   if (!cat) return
   const accCnt = (cat.accounts || []).length
@@ -587,7 +643,6 @@ const handleDeleteCategory = async (cat) => {
   }
 }
 
-/** [Level 3 계좌 삭제 확인 및 처리] */
 const handleDeleteAccount = async (acc) => {
   if (!acc) return
   if (!confirm(`[${acc.accountName}] 계좌를 삭제(해지)하시겠습니까?`)) return
@@ -599,7 +654,6 @@ const handleDeleteAccount = async (acc) => {
   }
 }
 
-/** Level 3 컬럼 상단 헤더의 '삭제' 버튼 클릭 시 선택된 계좌(또는 첫 번째 계좌) 삭제 실행 */
 const handleHeaderDeleteAccount = () => {
   if (!currentAccounts.value || currentAccounts.value.length === 0) {
     alert('삭제할 계좌가 없습니다.')
@@ -609,7 +663,6 @@ const handleHeaderDeleteAccount = () => {
   handleDeleteAccount(target)
 }
 
-// 화면 최초 진입 시 서버에서 3단계 계층 데이터 로드
 onMounted(() => {
   loadHierarchy()
 })
@@ -624,6 +677,6 @@ onMounted(() => {
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translate(-50%, 12px);
 }
 </style>

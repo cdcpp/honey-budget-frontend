@@ -8,13 +8,13 @@ export default {
     extend: {
       colors: {
         brand: {
-          primary: '#0a4b49',       /* 레벨 1 선택된 딥 에메랄드 */
-          primaryHover: '#073b39',
-          lightMint: '#daf1ec',     /* 레벨 2 선택된 소프트 민트 */
-          mintBorder: '#b3e2d6',
-          mintDarkText: '#0a524e',
-          badgeBg: '#f1f5f7',
-          badgeText: '#64748b'
+          primary: '#3182F6',       /* 토스 블루 (Toss Primary Blue) */
+          primaryHover: '#1B64DA',  /* 토스 블루 호버 */
+          lightMint: '#E8F3FF',     /* 토스 소프트 블루 틴트 */
+          mintBorder: '#C9E2FF',
+          mintDarkText: '#1B64DA',
+          badgeBg: '#F2F4F6',
+          badgeText: '#4E5968'
         }
       }
     },

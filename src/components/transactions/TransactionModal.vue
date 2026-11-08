@@ -2,28 +2,28 @@
 /**
  * ============================================================================
  * @file        TransactionModal.vue
- * @layer       UI Component (Presentation Layer - Modal)
- * @role        월별 소비내역 단건 신규 작성('create') 및 기존 내역 수정('edit') 팝업 모달
+ * @layer       UI Component (Presentation Layer - Modal / Mobile Bottom Sheet)
+ * @role        월별 소비내역 단건 신규 작성('create') 및 기존 내역 수정('edit') 모달
  * @parent      MonthlyTransactionsView.vue
  * ============================================================================
  */
 import { ref, watch } from 'vue'
 
 // ============================================================================
-// [SECTION 1] Props & Emits (모달 열림 상태, 초기 데이터, 닫기/제출 이벤트)
+// [SECTION 1] Props & Emits
 // ============================================================================
 const props = defineProps({
-  isOpen: { type: Boolean, default: false },          // 모달 표시 여부 (true면 화면에 노출)
-  mode: { type: String, default: 'create' },          // 'create'(신규) | 'edit'(수정)
-  initialData: { type: Object, default: () => ({}) }, // 수정 모드이거나 기본값 주입 시 전달되는 객체
-  availableAccounts: { type: Array, default: () => [] }, // 드롭다운에 표시할 선택 가능 계좌 목록
-  defaultDate: { type: String, default: '' }          // 기본 거래 일자 ('YYYY-MM-DD')
+  isOpen: { type: Boolean, default: false },
+  mode: { type: String, default: 'create' },
+  initialData: { type: Object, default: () => ({}) },
+  availableAccounts: { type: Array, default: () => [] },
+  defaultDate: { type: String, default: '' }
 })
 
 const emit = defineEmits(['close', 'submit'])
 
 // ============================================================================
-// [SECTION 2] Reactive State (모달 내부 입력 폼 데이터 및 에러 상태)
+// [SECTION 2] Reactive State
 // ============================================================================
 const form = ref({
   id: null,
@@ -35,14 +35,12 @@ const form = ref({
   memo: ''
 })
 
-const errorMessage = ref('')     // 유효성 검사 실패 시 표시할 에러 문구
-const isSubmitting = ref(false)  // 저장 버튼 중복 클릭 방지용 플래그
+const errorMessage = ref('')
+const isSubmitting = ref(false)
 
 // ============================================================================
-// [SECTION 3] Watchers & Helpers (모달 오픈 시 폼 초기화)
+// [SECTION 3] Watchers & Helpers
 // ============================================================================
-
-/** 오늘 날짜를 'YYYY-MM-DD' 형식으로 반환 */
 const getToday = () => {
   const now = new Date()
   const y = now.getFullYear()
@@ -51,7 +49,6 @@ const getToday = () => {
   return `${y}-${m}-${d}`
 }
 
-/** 모달이 열릴 때마다 initialData를 기반으로 폼 입력값을 초기화합니다. */
 const initForm = () => {
   errorMessage.value = ''
   isSubmitting.value = false
@@ -69,7 +66,6 @@ const initForm = () => {
   }
 }
 
-// isOpen 값이 false -> true로 바뀔 때 폼 초기화 실행
 watch(
   () => props.isOpen,
   (open) => {
@@ -78,10 +74,8 @@ watch(
 )
 
 // ============================================================================
-// [SECTION 4] Event Handlers (계좌 변경 및 폼 제출 검증)
+// [SECTION 4] Event Handlers
 // ============================================================================
-
-/** 드롭다운에서 소비 항목(계좌)을 변경했을 때 accountName과 accountId를 동시에 매핑 */
 const handleAccountChange = (e) => {
   const selectedName = e.target.value
   const found = props.availableAccounts.find((a) => a.name === selectedName)
@@ -89,7 +83,6 @@ const handleAccountChange = (e) => {
   form.value.accountId = found ? found.id : null
 }
 
-/** '등록하기 / 수정 완료' 버튼 클릭 시 필수값 검증 후 부모에게 submit 이벤트 전달 */
 const handleSubmit = async () => {
   errorMessage.value = ''
   if (!form.value.transactionDate) {
@@ -119,26 +112,26 @@ const handleSubmit = async () => {
 
 <template>
   <!-- ==================================================================== -->
-  <!-- [UI 영역] 모달 배경 오버레이 및 다이얼로그 카드 (isOpen일 때만 렌더링) -->
+  <!-- [UI 영역] 토스 다크 바텀시트(모바일) / 센터 다이얼로그(데스크톱)       -->
   <!-- ==================================================================== -->
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-50 overflow-y-auto bg-[#141413]/45 flex items-center justify-center p-4"
+    class="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
     @click.self="emit('close')"
   >
     <div
-      class="ts-card bg-white w-full max-w-lg overflow-hidden shadow-lg"
+      class="bg-[#151821] w-full max-w-lg rounded-t-[24px] sm:rounded-[22px] overflow-hidden shadow-2xl border border-white/[0.12]"
       role="dialog"
       aria-modal="true"
     >
       <!-- 모달 상단 헤더 -->
-      <div class="px-6 py-4 border-b border-[#141413]/12 flex items-center justify-between bg-[#F7F6F2]">
-        <h3 class="text-[16px] font-bold text-[#141413]">
+      <div class="px-6 pt-5 pb-4 border-b border-white/[0.08] flex items-center justify-between">
+        <h3 class="text-[18px] font-extrabold text-[#F9FAFB] tracking-tight">
           {{ mode === 'create' ? '새 소비 내역 작성' : '소비 내역 수정' }}
         </h3>
         <button
           @click="emit('close')"
-          class="text-[#575653] hover:text-[#141413] text-[14px] font-medium px-2 py-1 rounded-[4px] hover:bg-[#EFECE6] transition-colors cursor-pointer"
+          class="btn btn--secondary !min-h-[32px] !px-3 !text-[13px]"
           title="닫기"
         >
           닫기
@@ -146,12 +139,11 @@ const handleSubmit = async () => {
       </div>
 
       <!-- 모달 입력 폼 본문 -->
-      <form @submit.prevent="handleSubmit" class="p-6 space-y-4 text-[13px] font-sans">
+      <form @submit.prevent="handleSubmit" class="p-6 space-y-4 text-[14px] font-sans">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- 1. 거래 일자 -->
           <div>
-            <label class="block font-semibold text-[#141413] mb-1.5">
-              거래 일자 <span class="text-[#b91c1c]">*</span>
+            <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
+              거래 일자 <span class="text-[#FF6B76]">*</span>
             </label>
             <input
               v-model="form.transactionDate"
@@ -161,16 +153,15 @@ const handleSubmit = async () => {
             />
           </div>
 
-          <!-- 2. 소비 항목 (계좌) 선택 -->
           <div>
-            <label class="block font-semibold text-[#141413] mb-1.5">
-              소비 항목 (계좌) <span class="text-[#b91c1c]">*</span>
+            <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
+              소비 항목 (계좌) <span class="text-[#FF6B76]">*</span>
             </label>
             <select
               :value="form.accountName"
               @change="handleAccountChange"
               required
-              class="w-full ts-input font-medium cursor-pointer"
+              class="w-full ts-input font-bold cursor-pointer"
             >
               <option
                 v-for="acc in availableAccounts"
@@ -183,10 +174,9 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        <!-- 3. 사용처 / 내용 -->
         <div>
-          <label class="block font-semibold text-[#141413] mb-1.5">
-            사용처 / 내용 <span class="text-[#b91c1c]">*</span>
+          <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
+            사용처 / 내용 <span class="text-[#FF6B76]">*</span>
           </label>
           <input
             v-model="form.description"
@@ -198,10 +188,9 @@ const handleSubmit = async () => {
           />
         </div>
 
-        <!-- 4. 금액 (원) -->
         <div>
-          <label class="block font-semibold text-[#141413] mb-1.5">
-            금액 (원) <span class="text-[#b91c1c]">*</span>
+          <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
+            금액 (원) <span class="text-[#FF6B76]">*</span>
           </label>
           <input
             v-model.number="form.amount"
@@ -209,13 +198,12 @@ const handleSubmit = async () => {
             min="1"
             required
             placeholder="0"
-            class="w-full ts-input font-mono font-bold text-[15px] tabular-nums"
+            class="w-full ts-input font-mono font-extrabold text-[16px] tabular-nums"
           />
         </div>
 
-        <!-- 5. 세부 내용 / 메모 (선택) -->
         <div>
-          <label class="block font-semibold text-[#141413] mb-1.5">
+          <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
             세부 내용 / 메모
           </label>
           <textarea
@@ -223,28 +211,27 @@ const handleSubmit = async () => {
             rows="2"
             maxlength="255"
             placeholder="예: 쿠폰 5,000원 할인 적용, 주말 가족 외식 등"
-            class="w-full ts-input !h-auto py-2 resize-none"
+            class="w-full ts-input !h-auto py-2.5 resize-none"
           ></textarea>
         </div>
 
-        <!-- 유효성 에러 메시지 -->
-        <p v-if="errorMessage" class="text-[#b91c1c] font-semibold">
+        <p v-if="errorMessage" class="text-[13px] text-[#FF6B76] font-bold">
           {{ errorMessage }}
         </p>
 
         <!-- 하단 취소 / 제출 버튼 -->
-        <div class="pt-4 flex items-center justify-end gap-2 border-t border-[#141413]/12">
+        <div class="pt-3 grid grid-cols-2 sm:flex sm:items-center sm:justify-end gap-2.5">
           <button
             type="button"
             @click="emit('close')"
-            class="btn btn--secondary"
+            class="btn btn--secondary !min-h-[44px]"
           >
             취소
           </button>
           <button
             type="submit"
             :disabled="isSubmitting"
-            class="btn btn--primary"
+            class="btn btn--primary !min-h-[44px] sm:min-w-[120px]"
           >
             <span
               v-if="isSubmitting"
