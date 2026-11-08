@@ -173,7 +173,8 @@ export default {
     // 접근 비밀번호 (기본값: "2399", Cloudflare 환경변수 ACCESS_PIN으로도 변경 가능)
     const ACCESS_PIN = env.ACCESS_PIN || "2399";
     const AUTH_COOKIE_NAME = "hb_session";
-    const AUTH_TOKEN_VAL = "authorized_honey_session";
+    // 비밀번호 변경 시 기존에 로그인된 기기들의 세션도 즉시 만료되도록 PIN을 토큰에 결합
+    const AUTH_TOKEN_VAL = `hb_session_v2_${ACCESS_PIN}`;
 
     // 쿠키 확인
     const cookieHeader = request.headers.get("Cookie") || "";
