@@ -4,11 +4,13 @@ export default {
 
     // /api 또는 /health 요청은 GCP 백엔드(포트 8080)로 프록시
     if (url.pathname.startsWith("/api") || url.pathname === "/health") {
-      const backendOrigin = "http://35.254.156.249:8080";
+      // Cloudflare Workers는 보안상 순수 IP(35.254.156.249) 직접 호출을 차단(Error 1003)하므로
+      // IP를 가리키는 무료 와일드카드 도메인(sslip.io)으로 우회 호출합니다.
+      const backendOrigin = "http://35.254.156.249.sslip.io:8080";
       const targetUrl = new URL(url.pathname + url.search, backendOrigin);
 
       const modifiedHeaders = new Headers(request.headers);
-      modifiedHeaders.set("Host", "35.254.156.249:8080");
+      modifiedHeaders.set("Host", "35.254.156.249.sslip.io:8080");
 
       const modifiedRequest = new Request(targetUrl, {
         method: request.method,
