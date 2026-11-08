@@ -4,7 +4,7 @@ function renderLockScreen(errorMessage = "") {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Honey Budget - 보안 잠금</title>
+  <title>Honey Budget — 보안 잠금</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,62 +14,66 @@ function renderLockScreen(errorMessage = "") {
       margin: 0;
       padding: 0;
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
     body {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #fff5f7 0%, #fef0f4 50%, #fde2ec 100%);
+      background-color: #0B0D11;
+      background-image: radial-gradient(circle at 50% 20%, rgba(49, 130, 246, 0.08) 0%, transparent 60%);
+      color: #F9FAFB;
       padding: 20px;
     }
     .lock-card {
       width: 100%;
       max-width: 380px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border-radius: 28px;
-      padding: 40px 30px;
-      box-shadow: 0 20px 40px -15px rgba(232, 67, 147, 0.15), 0 0 0 1px rgba(232, 67, 147, 0.08);
+      background: #151821;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 40px 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
       text-align: center;
-      animation: fadeIn 0.4s ease-out;
+      animation: fadeIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .icon-wrap {
-      width: 72px;
-      height: 72px;
-      background: linear-gradient(135deg, #ffd3e2 0%, #ffb8d2 100%);
-      border-radius: 22px;
+      width: 64px;
+      height: 64px;
+      background: rgba(49, 130, 246, 0.12);
+      border: 1px solid rgba(49, 130, 246, 0.25);
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 34px;
+      font-size: 30px;
       margin: 0 auto 20px;
-      box-shadow: 0 8px 16px rgba(232, 67, 147, 0.2);
     }
     h1 {
       font-size: 22px;
       font-weight: 700;
-      color: #2d3436;
+      color: #F9FAFB;
       margin-bottom: 8px;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.02em;
     }
     p.subtitle {
       font-size: 14px;
-      color: #636e72;
+      color: #8B95A1;
       margin-bottom: 28px;
       line-height: 1.5;
+      letter-spacing: -0.01em;
     }
     .error-box {
-      background: #fff0f3;
-      border: 1px solid #ffccd5;
-      color: #e84393;
+      background: rgba(240, 68, 82, 0.12);
+      border: 1px solid rgba(240, 68, 82, 0.28);
+      color: #F04452;
       font-size: 13px;
       font-weight: 500;
-      padding: 10px 14px;
+      padding: 11px 14px;
       border-radius: 12px;
       margin-bottom: 20px;
       animation: shake 0.3s ease-in-out;
@@ -84,50 +88,53 @@ function renderLockScreen(errorMessage = "") {
     }
     input[type="password"] {
       width: 100%;
-      padding: 14px 18px;
-      font-size: 16px;
-      border: 1.5px solid #fad2e1;
-      border-radius: 16px;
-      background: #fff;
-      color: #2d3436;
+      height: 48px;
+      padding: 0 16px;
+      font-size: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: #1C202B;
+      color: #F9FAFB;
       text-align: center;
-      letter-spacing: 4px;
+      letter-spacing: 6px;
       outline: none;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     input[type="password"]::placeholder {
       letter-spacing: normal;
-      color: #b2bec3;
+      color: #6B7684;
       font-size: 14px;
     }
     input[type="password"]:focus {
-      border-color: #e84393;
-      box-shadow: 0 0 0 4px rgba(232, 67, 147, 0.12);
+      border-color: #3182F6;
+      box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.25);
     }
     button.btn-submit {
       width: 100%;
-      padding: 14px 0;
+      height: 48px;
       font-size: 15px;
       font-weight: 600;
-      color: #fff;
-      background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+      color: #FFFFFF;
+      background: #3182F6;
       border: none;
-      border-radius: 16px;
+      border-radius: 12px;
       cursor: pointer;
-      box-shadow: 0 8px 18px rgba(232, 67, 147, 0.28);
-      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(49, 130, 246, 0.3);
+      transition: all 0.15s ease;
+      letter-spacing: -0.01em;
     }
     button.btn-submit:hover {
+      background: #4593FC;
       transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(232, 67, 147, 0.35);
+      box-shadow: 0 6px 16px rgba(49, 130, 246, 0.4);
     }
     button.btn-submit:active {
       transform: translateY(1px);
     }
     .footer-note {
       font-size: 12px;
-      color: #b2bec3;
-      margin-top: 22px;
+      color: #6B7684;
+      margin-top: 24px;
     }
   </style>
 </head>
@@ -163,8 +170,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // 접근 비밀번호 (기본값: "1234", Cloudflare 환경변수 ACCESS_PIN으로도 변경 가능)
-    const ACCESS_PIN = env.ACCESS_PIN || "1234";
+    // 접근 비밀번호 (기본값: "2399", Cloudflare 환경변수 ACCESS_PIN으로도 변경 가능)
+    const ACCESS_PIN = env.ACCESS_PIN || "2399";
     const AUTH_COOKIE_NAME = "hb_session";
     const AUTH_TOKEN_VAL = "authorized_honey_session";
 
