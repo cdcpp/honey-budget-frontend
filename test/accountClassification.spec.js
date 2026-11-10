@@ -252,15 +252,25 @@ describe('계좌 분류 관리 Backend REST API 연동 테스트', () => {
       institutionName: '하나은행',
       accountNumber: '111-222',
       balance: 10000,
+      isDashboardVisible: true,
       memo: '테스트'
     })
     expect(fetch).toHaveBeenCalledWith('/api/v1/accounts', expect.objectContaining({
-      method: 'POST'
+      method: 'POST',
+      body: expect.stringContaining('"isDashboardVisible":true')
     }))
 
-    await updateAccount(1, { accountName: '이름수정', categoryId: 1, memo: '메모수정' })
+    await updateAccount(1, {
+      accountName: '이름수정',
+      institutionName: '국민은행',
+      categoryId: 1,
+      balance: 250000,
+      isDashboardVisible: true,
+      memo: '메모수정'
+    })
     expect(fetch).toHaveBeenCalledWith('/api/v1/accounts/1', expect.objectContaining({
-      method: 'PUT'
+      method: 'PUT',
+      body: expect.stringContaining('"balance":250000')
     }))
 
     await depositAccount(1, 50000)

@@ -6,7 +6,7 @@
  * @spring      백엔드 연동 정보:
  *              - CategoryGroupController : /api/v1/category-groups
  *              - CategoryController      : /api/v1/categories
- *              - AccountController       : /api/v1/accounts
+ *              - AccountController       : /api/v1/accounts (Account.java 엔티티 매핑)
  * ============================================================================
  */
 
@@ -90,7 +90,7 @@ export const accountClassificationApi = {
       groupCategoriesMap.get(c.categoryGroupId).push(catObj);
     }
 
-    // 2단계: 각 계좌를 소속 카테고리(categoryId)의 accounts 배열에 삽입
+    // 2단계: 각 계좌(Account.java)를 소속 카테고리(categoryId)의 accounts 배열에 삽입
     for (const a of accounts) {
       const targetCat = categoryMap.get(a.categoryId);
       if (targetCat) {
@@ -102,6 +102,9 @@ export const accountClassificationApi = {
           accountNumber: a.accountNumber,
           memo: a.memo || "",
           balance: Number(a.balance) || 0,
+          isDashboardVisible: Boolean(
+            a.isDashboardVisible ?? a.dashboardVisible ?? false
+          ),
           useYn: a.useYn !== false,
           status: a.useYn !== false ? "사용" : "해지",
         });
@@ -190,7 +193,8 @@ export const accountClassificationApi = {
   },
 
   // ==========================================================================
-  // [4] Level 3: 소분류 계좌(Account) CRUD 및 입출금
+  // [4] Level 3: 소분류 계좌(Account.java) CRUD 및 입출금
+  // - 필드: accountName, institutionName, categoryId, isDashboardVisible, balance, useYn, memo
   // ==========================================================================
 
   /**
@@ -203,6 +207,8 @@ export const accountClassificationApi = {
     institutionName,
     accountNumber,
     balance,
+    isDashboardVisible,
+    useYn,
     memo,
   }) {
     return request("/api/v1/accounts", {
@@ -212,20 +218,41 @@ export const accountClassificationApi = {
         accountName,
         institutionName,
         accountNumber,
-        balance,
+        balance: Number(balance) || 0,
+        isDashboardVisible: Boolean(isDashboardVisible),
+        useYn: useYn !== false,
         memo,
       }),
     });
   },
 
   /**
-   * [계좌 정보 수정]
+   * [계좌 정보 수정 (Account.update 메서드 매핑)]
    * @http PUT /api/v1/accounts/{id}
    */
-  async updateAccount(id, { accountName, categoryId, memo }) {
+  async updateAccount(
+    id,
+    {
+      accountName,
+      institutionName,
+      categoryId,
+      memo,
+      isDashboardVisible,
+      balance,
+      useYn,
+    }
+  ) {
     return request(`/api/v1/accounts/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ accountName, categoryId, memo }),
+      body: JSON.stringify({
+        accountName,
+        institutionName,
+        categoryId,
+        memo,
+        isDashboardVisible: Boolean(isDashboardVisible),
+        balance: Number(balance) || 0,
+        useYn: useYn !== false,
+      }),
     });
   },
 

@@ -108,8 +108,9 @@
           </div>
         </template>
 
-        <!-- 3. 계좌 등록/수정 폼 -->
+        <!-- 3. 계좌 등록/수정 폼 (Account.java 엔티티 필드 기준) -->
         <template v-else-if="isAccountMode">
+          <!-- 소속 카테고리 (category) -->
           <div>
             <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
               소속 카테고리 <span class="text-[#FF6B76]">*</span>
@@ -127,6 +128,7 @@
             </select>
           </div>
 
+          <!-- 계좌명 (accountName) & 금융기관명 (institutionName) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
@@ -137,7 +139,7 @@
                 type="text"
                 maxlength="50"
                 required
-                placeholder="예: 급여 지급 계좌"
+                placeholder="예: 토스 생활비 통장"
                 class="w-full ts-input"
               />
             </div>
@@ -150,12 +152,71 @@
                 type="text"
                 maxlength="30"
                 required
-                placeholder="예: 국민은행, 토스뱅크"
+                placeholder="예: 토스뱅크, 국민은행"
                 class="w-full ts-input"
               />
             </div>
           </div>
 
+          <!-- 계좌 현재 잔액 (balance: BigDecimal, precision 15, scale 0) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[13px] font-bold text-[#8B95A1]">
+                계좌 현재 잔액 (원) <span class="text-[#FF6B76]">*</span>
+              </label>
+              <span class="text-[13px] font-mono font-bold text-[#64A8FF] tabular-nums">
+                {{ Number(accountForm.balance || 0).toLocaleString('ko-KR') }}원
+              </span>
+            </div>
+            <input
+              v-model.number="accountForm.balance"
+              type="number"
+              min="0"
+              step="1"
+              required
+              placeholder="0"
+              class="w-full ts-input font-mono font-extrabold text-[15px] tabular-nums"
+            />
+          </div>
+
+          <!-- 대시보드 잔액관리 노출여부 (isDashboardVisible: Boolean, default false) -->
+          <div class="p-3.5 rounded-[14px] bg-[#1C202B] border border-white/[0.06] flex items-center justify-between gap-4">
+            <div>
+              <div class="text-[14px] font-bold text-[#F9FAFB]">대시보드 잔액관리 노출</div>
+              <p class="text-[13px] text-[#8B95A1] mt-0.5 m-0">
+                활성화하면 대시보드 잔액 현황 계좌로 출력됩니다.
+              </p>
+            </div>
+
+            <div class="inline-flex rounded-[10px] bg-[#0B0D11] p-1 border border-white/[0.08] shrink-0">
+              <button
+                type="button"
+                @click="accountForm.isDashboardVisible = true"
+                :class="[
+                  'px-3 py-1.5 rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer border-0',
+                  accountForm.isDashboardVisible
+                    ? 'bg-[#3182F6] text-white'
+                    : 'bg-transparent text-[#8B95A1] hover:text-[#F9FAFB]'
+                ]"
+              >
+                노출
+              </button>
+              <button
+                type="button"
+                @click="accountForm.isDashboardVisible = false"
+                :class="[
+                  'px-3 py-1.5 rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer border-0',
+                  !accountForm.isDashboardVisible
+                    ? 'bg-[#242938] text-[#F9FAFB]'
+                    : 'bg-transparent text-[#8B95A1] hover:text-[#F9FAFB]'
+                ]"
+              >
+                숨김
+              </button>
+            </div>
+          </div>
+
+          <!-- 계좌 활성 여부 (useYn: Boolean) -->
           <div class="flex items-center gap-6 pt-1">
             <span class="text-[13px] font-bold text-[#8B95A1]">계좌 상태</span>
             <label class="inline-flex items-center gap-2 cursor-pointer text-[14px]">
@@ -168,6 +229,7 @@
             </label>
           </div>
 
+          <!-- 비고/메모 (memo: length 200) -->
           <div>
             <label class="block text-[13px] font-bold text-[#8B95A1] mb-1.5">
               메모 (최대 200자)
@@ -258,7 +320,7 @@
  * ============================================================================
  * @file        ClassificationModal.vue
  * @layer       UI Component (Presentation Layer - Modal / Mobile Bottom Sheet)
- * @role        Level 1(그룹), Level 2(카테고리), Level 3(계좌)의 신규 등록/수정 및 입출금 통합 모달
+ * @role        Level 1(그룹), Level 2(카테고리), Level 3(계좌: Account.java)의 신규 등록/수정 및 입출금 통합 모달
  * @parent      AccountClassificationView.vue
  * ============================================================================
  */
@@ -293,12 +355,18 @@ const categoryForm = ref({
   categoryName: ''
 })
 
+/**
+ * 3. 소분류 계좌 입력 폼 데이터 (Account.java 필드 매핑)
+ * - balance            : 계좌 현재 잔액 (기본 0)
+ * - isDashboardVisible : 대시보드 잔액관리 노출 여부 (기본 false)
+ */
 const accountForm = ref({
   categoryId: null,
   accountName: '',
   institutionName: '',
   accountNumber: '',
   balance: 0,
+  isDashboardVisible: false,
   useYn: true,
   memo: ''
 })
@@ -445,7 +513,8 @@ const initFormData = async () => {
       accountName: d.accountName || '',
       institutionName: d.institutionName || '',
       accountNumber: d.accountNumber || '',
-      balance: Number(d.balance) || 0,
+      balance: d.balance !== undefined && d.balance !== null ? Number(d.balance) : 0,
+      isDashboardVisible: Boolean(d.isDashboardVisible ?? d.dashboardVisible ?? false),
       useYn: d.useYn !== undefined ? d.useYn : true,
       memo: d.memo || ''
     }
@@ -480,10 +549,15 @@ const handleSubmit = async () => {
       if (!accountForm.value.categoryId) throw new Error('소속 카테고리를 선택해주세요.')
       if (!accountForm.value.accountName.trim()) throw new Error('계좌명을 입력해주세요.')
       if (!accountForm.value.institutionName.trim()) throw new Error('금융기관명을 입력해주세요.')
+      const parsedBalance = Number(accountForm.value.balance)
+      if (isNaN(parsedBalance) || parsedBalance < 0) {
+        throw new Error('올바른 잔액을 입력해주세요.')
+      }
       emit('submit', {
         ...accountForm.value,
         accountNumber: accountForm.value.accountNumber || '-',
-        balance: Number(accountForm.value.balance) || 0
+        balance: parsedBalance,
+        isDashboardVisible: Boolean(accountForm.value.isDashboardVisible)
       })
     } else if (isTransactionMode.value) {
       const amt = Number(transactionAmount.value)

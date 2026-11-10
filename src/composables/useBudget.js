@@ -143,10 +143,25 @@ export function useBudget() {
     }
   }
 
-  // 카테고리 관리에서 계좌가 새로 추가되면 즉시 12개월 배열을 할당
+  // 카테고리 관리에서 계좌가 새로 추가되면 즉시 12개월 배열을 할당하고,
+  // 대시보드 노출(isDashboardVisible === true) 계좌가 있으면 잔액 현황(balanceList)과 동기화합니다.
   watch(
     groups,
     async () => {
+      const dashboardAccounts = []
+      forEachAccount((acc) => {
+        if (acc.isDashboardVisible) {
+          dashboardAccounts.push({
+            id: acc.id,
+            name: acc.accountName,
+            amount: Number(acc.balance) || 0
+          })
+        }
+      })
+      if (dashboardAccounts.length > 0) {
+        balanceList.value = dashboardAccounts
+      }
+
       if (hasAnyAccount() && yearRecords.length === 0 && !yearLoading.value) {
         await loadYearAmounts()
       } else {

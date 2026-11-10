@@ -410,7 +410,7 @@
           >
             <div class="flex items-start justify-between gap-3">
               <div>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                   <h3 class="font-extrabold text-[15px] text-[#F9FAFB] tracking-tight">{{ acc.accountName }}</h3>
                   <span
                     :class="[
@@ -421,6 +421,16 @@
                     ]"
                   >
                     {{ acc.useYn !== false ? '사용' : '해지' }}
+                  </span>
+                  <span
+                    :class="[
+                      'px-2 py-0.5 rounded-full text-[13px] font-bold border',
+                      acc.isDashboardVisible
+                        ? 'bg-[#3182F6]/15 text-[#64A8FF] border-[#3182F6]/30'
+                        : 'bg-[#151821] text-[#6B7684] border-white/[0.06]'
+                    ]"
+                  >
+                    {{ acc.isDashboardVisible ? '대시보드 노출' : '대시보드 숨김' }}
                   </span>
                 </div>
                 <p class="text-[13px] text-[#8B95A1] mt-1 flex items-center gap-1.5 m-0">
@@ -447,11 +457,11 @@
               </div>
             </div>
 
-            <div
-              v-if="acc.memo"
-              class="pt-2 border-t border-white/[0.06] text-[13px] text-[#8B95A1]"
-            >
-              {{ acc.memo }}
+            <div class="pt-2 border-t border-white/[0.06] flex items-center justify-between gap-2 text-[13px]">
+              <span class="text-[#8B95A1] truncate">{{ acc.memo || '메모 없음' }}</span>
+              <span class="font-mono font-extrabold text-[#64A8FF] tabular-nums shrink-0">
+                잔액 {{ Number(acc.balance || 0).toLocaleString('ko-KR') }}원
+              </span>
             </div>
           </div>
         </div>
