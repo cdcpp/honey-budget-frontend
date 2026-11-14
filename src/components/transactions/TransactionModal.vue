@@ -58,7 +58,7 @@ const initForm = () => {
   form.value = {
     id: d.id || null,
     accountId: d.accountId || defaultAccount.id || null,
-    accountName: d.accountName || defaultAccount.name || '생활비(식비)',
+    accountName: d.accountName || defaultAccount.name || '',
     transactionDate: d.transactionDate || props.defaultDate || getToday(),
     amount: d.amount !== undefined ? Number(d.amount) : '',
     description: d.description || '',
@@ -161,8 +161,12 @@ const handleSubmit = async () => {
               :value="form.accountName"
               @change="handleAccountChange"
               required
-              class="w-full ts-input font-bold cursor-pointer"
+              :disabled="availableAccounts.length === 0"
+              class="w-full ts-input font-bold cursor-pointer disabled:opacity-50"
             >
+              <option v-if="availableAccounts.length === 0" value="" disabled>
+                소비 계좌 없음
+              </option>
               <option
                 v-for="acc in availableAccounts"
                 :key="acc.id || acc.name"

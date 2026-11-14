@@ -105,6 +105,9 @@ export const accountClassificationApi = {
           isDashboardVisible: Boolean(
             a.isDashboardVisible ?? a.dashboardVisible ?? false
           ),
+          isSpendingVisible: Boolean(
+            a.isSpendingVisible ?? a.spendingVisible ?? false
+          ),
           useYn: a.useYn !== false,
           status: a.useYn !== false ? "사용" : "해지",
         });
@@ -194,7 +197,7 @@ export const accountClassificationApi = {
 
   // ==========================================================================
   // [4] Level 3: 소분류 계좌(Account.java) CRUD 및 입출금
-  // - 필드: accountName, institutionName, categoryId, isDashboardVisible, balance, useYn, memo
+  // - 필드: accountName, institutionName, categoryId, isDashboardVisible, isSpendingVisible, balance, useYn, memo
   // ==========================================================================
 
   /**
@@ -208,6 +211,7 @@ export const accountClassificationApi = {
     accountNumber,
     balance,
     isDashboardVisible,
+    isSpendingVisible,
     useYn,
     memo,
   }) {
@@ -220,6 +224,7 @@ export const accountClassificationApi = {
         accountNumber,
         balance: Number(balance) || 0,
         isDashboardVisible: Boolean(isDashboardVisible),
+        isSpendingVisible: Boolean(isSpendingVisible),
         useYn: useYn !== false,
         memo,
       }),
@@ -238,6 +243,7 @@ export const accountClassificationApi = {
       categoryId,
       memo,
       isDashboardVisible,
+      isSpendingVisible,
       balance,
       useYn,
     }
@@ -250,6 +256,7 @@ export const accountClassificationApi = {
         categoryId,
         memo,
         isDashboardVisible: Boolean(isDashboardVisible),
+        isSpendingVisible: Boolean(isSpendingVisible),
         balance: Number(balance) || 0,
         useYn: useYn !== false,
       }),

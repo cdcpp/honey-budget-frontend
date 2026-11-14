@@ -107,6 +107,57 @@ const saveToStorage = (list) => {
   }
 }
 
+/**
+ * 백엔드 API 오류 응답 본문에서 사용자에게 노출할 메시지를 추출합니다.
+ * JSON 응답이 아닌 경우(HTML 404/502 등) null을 반환하여 localStorage 폴백을 허용합니다.
+ * @param {Response} res - fetch 응답 객체
+ * @returns {Promise<string|null>} 추출된 에러 메시지 또는 null
+ */
+const parseApiError = async (res) => {
+  try {
+    const json = await res.json()
+    if (json && typeof json === 'object') {
+      return json.message || json.error || json.data?.message || `요청 처리에 실패했습니다. (HTTP ${res.status})`
+    }
+  } catch {
+    // JSON 본문이 없으면 미구현/프록시 오류로 간주하고 폴백 진행
+  }
+  return null
+}
+
+/**
+ * REST API 변경 요청(POST/PUT/DELETE)을 실행합니다.
+ * 서버가 JSON 유효성/도메인 오류를 반환하면 예외를 던지고, 네트워크 오류 시 null을 반환합니다.
+ * @param {string} url - 요청 URL
+ * @param {RequestInit} options - fetch 옵션
+ * @returns {Promise<{ data: any } | null>}
+ */
+const sendApiRequest = async (url, options) => {
+  let res = null
+  try {
+    res = await fetch(url, options)
+  } catch {
+    return null
+  }
+
+  if (res.ok) {
+    if (res.status === 204) return { data: true }
+    let json = null
+    try {
+      json = await res.json()
+    } catch {
+      return { data: true }
+    }
+    return { data: json?.data !== undefined ? json.data : json }
+  }
+
+  const errMsg = await parseApiError(res)
+  if (errMsg) {
+    throw new Error(errMsg)
+  }
+  return null
+}
+
 // ============================================================================
 // [PUBLIC API] 외부(Composable)에서 호출하는 REST API 메소드
 // ============================================================================
@@ -154,19 +205,12 @@ export const accountTransactionApi = {
    * @returns     {Promise<object>} 등록된 소비내역 객체
    */
   async createTransaction(payload) {
-    try {
-      const res = await fetch(BASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (res.ok) {
-        const json = await res.json()
-        return json?.data !== undefined ? json.data : json
-      }
-    } catch (err) {
-      // localStorage fallback
-    }
+    const result = await sendApiRequest(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (result) return result.data
 
     const all = loadFromStorage()
     const newTrans = {
@@ -192,19 +236,12 @@ export const accountTransactionApi = {
    * @returns     {Promise<object>} 수정 완료된 소비내역 객체
    */
   async updateTransaction(id, payload) {
-    try {
-      const res = await fetch(`${BASE_URL}/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (res.ok) {
-        const json = await res.json()
-        return json?.data !== undefined ? json.data : json
-      }
-    } catch (err) {
-      // localStorage fallback
-    }
+    const result = await sendApiRequest(`${BASE_URL}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (result) return result.data
 
     const all = loadFromStorage()
     const idx = all.findIndex((t) => t.id === id)
@@ -228,15 +265,11 @@ export const accountTransactionApi = {
    * @returns     {Promise<boolean>} 삭제 성공 여부(true)
    */
   async deleteTransaction(id) {
-    try {
-      const res = await fetch(`${BASE_URL}/${id}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json' }
-      })
-      if (res.ok) return true
-    } catch (err) {
-      // localStorage fallback
-    }
+    const result = await sendApiRequest(`${BASE_URL}/${id}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' }
+    })
+    if (result) return true
 
     let all = loadFromStorage()
     all = all.filter((t) => t.id !== id)

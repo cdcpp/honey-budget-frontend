@@ -17,7 +17,6 @@ import { useAccountClassification } from './useAccountClassification'
 import { accountYearMonthApi } from '../api/accountYearMonthApi'
 import { STORAGE_KEYS, TYPE_ORDER, DEFAULT_BALANCE_LIST, createEmptyMonths } from '../constants/budgetDefaults'
 import { classifyGroup, toMonthArray, toAmountsMap, formatNumber, formatCurrency } from '../utils/formatters'
-import { downloadJson, readJsonFile, downloadCsv } from '../utils/fileExport'
 
 /**
  * 12개월 금액 배열의 변경 여부(Dirty Checking)를 비교하기 위해 JSON 문자열 스냅샷을 만듭니다.
@@ -296,7 +295,7 @@ export function useBudget() {
   const annualNetTotal = computed(() => netBalanceByMonth.value.reduce((a, b) => a + b, 0))
 
   // ==========================================================================
-  // [SECTION 4] Business Actions (연도 변경, 서버 일괄 저장, 행 복사, 파일 백업)
+  // [SECTION 4] Business Actions (연도 변경, 서버 일괄 저장, 행 복사)
   // ==========================================================================
 
   /** [조회 연도 변경] 드롭다운에서 연도 변경 시 해당 연도의 월별 금액 재조회 */
@@ -347,99 +346,12 @@ export function useBudget() {
     }
   }
 
-  /** [잔액 현황 항목 추가] */
-  const addBalanceItem = () => {
-    balanceList.value.push({ id: 'bal-' + Date.now(), name: '새 항목', amount: 0 })
-  }
-
-  /** [잔액 현황 항목 삭제] */
-  const removeBalanceItem = (index) => {
-    balanceList.value.splice(index, 1)
-  }
-
   /** [1월 금액을 12개월 전체에 동일하게 복사] (행 우측 '»' 버튼 클릭 시 실행) */
   const fillRowAcrossMonths = (row, startMonthIdx = 0) => {
     const val = Number(row.values[startMonthIdx]) || 0
     for (let i = startMonthIdx; i < 12; i++) {
       row.values[i] = val
     }
-  }
-
-  /** [화면의 모든 월별 금액 0원 초기화] (저장 버튼을 눌러야 DB에 최종 반영됨) */
-  const resetToZero = () => {
-    if (confirm('모든 수치 데이터를 0으로 초기화하시겠습니까? (저장 버튼을 눌러야 서버에 반영됩니다)')) {
-      balanceList.value.forEach((item) => (item.amount = 0))
-      Object.keys(amounts.value).forEach((id) => {
-        amounts.value[id] = createEmptyMonths()
-      })
-    }
-  }
-
-  /** [현재 예산 데이터 JSON 파일 백업 다운로드] */
-  const exportToJson = () => {
-    downloadJson(
-      {
-        version: 3,
-        year: year.value,
-        exportedAt: new Date().toISOString(),
-        balanceList: balanceList.value,
-        amounts: amounts.value
-      },
-      `honey-budget-${new Date().toISOString().slice(0, 10)}.json`
-    )
-  }
-
-  /** [JSON 백업 파일 불러오기] */
-  const importFromJson = async (file) => {
-    try {
-      const parsed = await readJsonFile(file)
-      if (parsed.amounts && typeof parsed.amounts === 'object') {
-        balanceList.value = parsed.balanceList || []
-        Object.keys(amounts.value).forEach((id) => {
-          if (Array.isArray(parsed.amounts[id])) {
-            amounts.value[id] = toMonthArray(
-              Object.fromEntries(parsed.amounts[id].map((v, i) => [i + 1, v]))
-            )
-          }
-        })
-        return true
-      } else {
-        alert('유효하지 않은 백업 파일 형식입니다.')
-        throw new Error('Invalid JSON structure')
-      }
-    } catch (err) {
-      alert(err.message || 'JSON 파일을 파싱하는 데 실패했습니다.')
-      throw err
-    }
-  }
-
-  /** [연간 명세표 전체 행을 엑셀 호환 CSV 파일로 다운로드] */
-  const exportToCsv = () => {
-    const headers = ['구분', '항목', ...Array.from({ length: 12 }, (_, i) => i + 1 + '월'), '연간 합계']
-    const rows = []
-
-    const totalRowOf = {
-      income: ['총계', '총 수입', totalIncomeByMonth, annualIncomeTotal],
-      saving: ['총계', '총 저축액', totalSavingsByMonth, annualSavingsTotal],
-      expense: ['총계', '총 지출', totalExpensesByMonth, annualExpensesTotal]
-    }
-
-    sections.value.forEach((section, idx) => {
-      section.categories.forEach((cat) => {
-        cat.rows.forEach((row) => {
-          rows.push([section.title, cat.name + ' / ' + row.label, ...row.values, getRowTotal(row)])
-        })
-      })
-      const isLastOfType = !sections.value.slice(idx + 1).some((s) => s.type === section.type)
-      const total = totalRowOf[section.type]
-      if (isLastOfType && total) {
-        rows.push([total[0], total[1], ...total[2].value, total[3].value])
-      }
-    })
-
-    rows.push(['결과', '순 잔여/차액', ...netBalanceByMonth.value, annualNetTotal.value])
-
-    downloadCsv(headers, rows, `honey-budget-${year.value}.csv`)
   }
 
   return {
@@ -470,13 +382,7 @@ export function useBudget() {
     getRowTotal,
     getCategoryMonthTotal,
     getCategoryTotal,
-    addBalanceItem,
-    removeBalanceItem,
     fillRowAcrossMonths,
-    resetToZero,
-    exportToJson,
-    importFromJson,
-    exportToCsv,
     formatNumber,
     formatCurrency
   }

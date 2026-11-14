@@ -10,7 +10,7 @@
  * @spring      com.honeybudget.account.domain.AccountTransaction 연동
  * ============================================================================
  */
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAccountTransactions } from '../../composables/useAccountTransactions'
 import TransactionModal from './TransactionModal.vue'
 
@@ -39,13 +39,71 @@ const {
 // ============================================================================
 // [SECTION 2] Local UI State (인라인 빠른 등록 폼 & 팝업 모달 상태)
 // ============================================================================
+/** 로컬 타임존 기준 오늘 날짜('YYYY-MM-DD') 반환 */
+const getLocalToday = () => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** 현재 조회 중인 연월에 맞는 기본 거래 일자 반환 (이번 달이면 오늘, 다른 달이면 급여일 5일) */
+const getDefaultTransactionDate = () => {
+  const now = new Date()
+  if (now.getFullYear() === selectedYear.value && now.getMonth() + 1 === selectedMonth.value) {
+    return getLocalToday()
+  }
+  return `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-05`
+}
+
+/** 현재 탭 또는 등록된 DB 계좌 목록을 기준으로 기본 계좌 객체 반환 */
+const resolveDefaultAccount = () => {
+  const list = availableAccounts.value || []
+  if (activeTab.value !== 'ALL') {
+    const tabMatched = list.find((a) => a.name === activeTab.value)
+    if (tabMatched) return tabMatched
+  }
+  return list.find((a) => a.id != null) || list[0] || { id: null, name: '' }
+}
+
 const quickForm = ref({
-  transactionDate: new Date().toISOString().substring(0, 10),
-  accountName: '생활비(식비)',
+  transactionDate: getDefaultTransactionDate(),
+  accountName: resolveDefaultAccount().name,
   description: '',
   amount: '',
   memo: ''
 })
+
+// 조회 연월 변경 시 빠른 등록 기본 일자도 해당 월로 동기화
+watch(
+  [selectedYear, selectedMonth],
+  () => {
+    quickForm.value.transactionDate = getDefaultTransactionDate()
+  },
+  { immediate: true }
+)
+
+// 계좌 목록 로드 완료 또는 탭 전환 시 유효한 계좌(accountId 보유)로 자동 동기화
+watch(
+  [availableAccounts, activeTab],
+  () => {
+    const list = availableAccounts.value || []
+    if (activeTab.value !== 'ALL') {
+      const tabMatched = list.find((a) => a.name === activeTab.value)
+      if (tabMatched) {
+        quickForm.value.accountName = tabMatched.name
+        return
+      }
+    }
+    const current = list.find((a) => a.name === quickForm.value.accountName)
+    const hasRealAccount = list.some((a) => a.id != null)
+    if (!current || (current.id == null && hasRealAccount)) {
+      quickForm.value.accountName = resolveDefaultAccount().name
+    }
+  },
+  { immediate: true }
+)
 
 const isAddingQuick = ref(false)
 
@@ -59,11 +117,13 @@ const modalState = ref({
 // [SECTION 3] Event Handlers
 // ============================================================================
 const openCreateModal = () => {
+  const defaultAccount = resolveDefaultAccount()
   modalState.value = {
     isOpen: true,
     mode: 'create',
     data: {
-      accountName: activeTab.value !== 'ALL' ? activeTab.value : (availableAccounts.value[0]?.name || '생활비(식비)'),
+      accountId: defaultAccount.id,
+      accountName: defaultAccount.name,
       transactionDate: `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-05`
     }
   }
@@ -95,6 +155,10 @@ const handleModalSubmit = async (formData) => {
 }
 
 const handleQuickSubmit = async () => {
+  if (!quickForm.value.transactionDate) {
+    alert('거래 일자를 입력해주세요.')
+    return
+  }
   if (!quickForm.value.description.trim()) {
     alert('사용처/내용을 입력해주세요.')
     return
@@ -107,13 +171,17 @@ const handleQuickSubmit = async () => {
 
   try {
     isAddingQuick.value = true
-    const found = availableAccounts.value.find((a) => a.name === quickForm.value.accountName)
+    const found = availableAccounts.value.find((a) => a.name === quickForm.value.accountName) || resolveDefaultAccount()
+    if (!found || !found.id) {
+      alert('카테고리 관리에서 소비내역 소비계좌 출력을 노출로 설정한 계좌를 먼저 선택해주세요.')
+      return
+    }
     await addTransaction({
-      accountId: found ? found.id : null,
-      accountName: quickForm.value.accountName,
+      accountId: found.id,
+      accountName: found.name,
       transactionDate: quickForm.value.transactionDate,
-      amount: amt,
-      description: quickForm.value.description,
+      amount: Math.round(amt),
+      description: quickForm.value.description.trim(),
       memo: quickForm.value.memo
     })
     quickForm.value.description = ''
@@ -175,18 +243,16 @@ const formatCurrency = (val) => {
           <span class="text-[#64A8FF] font-mono tabular-nums ml-1">{{ formatCurrency(totalMonthAmount) }}</span>
         </h1>
         <p class="text-[14px] text-[#8B95A1] mt-1 m-0">
-          생활비(식비), 고정비, 자동차/병원비 지출을 날짜별로 기록해요.
+          소비내역 출력이 활성화된 소비계좌별 지출을 날짜별로 기록해요.
         </p>
       </div>
 
       <!-- 우측: 연월 선택기(< 2026년 1월 >) 및 '+ 내역 작성' 버튼 -->
       <div class="flex items-center justify-between sm:justify-end gap-2.5">
         <div class="inline-flex items-center bg-[#151821] border border-white/[0.1] rounded-[12px] h-[40px] px-1">
-          <button
-            @click="prevMonth"
+          <button @click="prevMonth"
             class="w-8 h-8 rounded-[8px] flex items-center justify-center text-[#8B95A1] hover:text-[#F9FAFB] hover:bg-[#1C202B] text-[18px] font-bold transition-colors cursor-pointer"
-            title="이전 달"
-          >
+            title="이전 달">
             &lsaquo;
           </button>
 
@@ -194,19 +260,14 @@ const formatCurrency = (val) => {
             {{ selectedYear }}년 {{ selectedMonth }}월
           </div>
 
-          <button
-            @click="nextMonth"
+          <button @click="nextMonth"
             class="w-8 h-8 rounded-[8px] flex items-center justify-center text-[#8B95A1] hover:text-[#F9FAFB] hover:bg-[#1C202B] text-[18px] font-bold transition-colors cursor-pointer"
-            title="다음 달"
-          >
+            title="다음 달">
             &rsaquo;
           </button>
         </div>
 
-        <button
-          @click="openCreateModal"
-          class="btn btn--primary"
-        >
+        <button @click="openCreateModal" class="btn btn--primary">
           <span>+ 내역 작성</span>
         </button>
       </div>
@@ -219,44 +280,46 @@ const formatCurrency = (val) => {
       <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
         <div class="flex items-center justify-between text-[13px] font-bold text-[#8B95A1]">
           <span>이번 달 총 소비액</span>
-          <span class="px-2 py-0.5 rounded-full bg-[#3182F6]/20 text-[#64A8FF] tabular-nums">{{ transactions.length }}건</span>
+          <span class="px-2 py-0.5 rounded-full bg-[#3182F6]/20 text-[#64A8FF] tabular-nums">{{ transactions.length
+          }}건</span>
         </div>
         <div>
-          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
+          <div
+            class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
             {{ formatCurrency(totalMonthAmount) }}
           </div>
           <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">{{ periodLabel }}</p>
         </div>
       </div>
 
-      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
-        <div class="text-[13px] font-bold text-[#8B95A1]">생활비(식비)</div>
+      <div
+        v-for="acc in availableAccounts"
+        :key="`summary-${acc.id || acc.name}`"
+        class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2"
+      >
+        <div class="flex items-center justify-between gap-2 text-[13px] font-bold text-[#8B95A1]">
+          <span class="truncate">{{ acc.name }}</span>
+          <span v-if="acc.institutionName" class="text-[12px] font-semibold text-[#6B7684] shrink-0">
+            {{ acc.institutionName }}
+          </span>
+        </div>
         <div>
-          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
-            {{ formatCurrency(accountTotals['생활비(식비)'] || 0) }}
+          <div
+            class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
+            {{ formatCurrency(accountTotals[acc.name] || 0) }}
           </div>
-          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">장보기 · 외식 · 식재료</p>
+          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">{{ acc.categoryName || '소비 계좌' }}</p>
         </div>
       </div>
 
-      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
-        <div class="text-[13px] font-bold text-[#8B95A1]">고정비</div>
-        <div>
-          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
-            {{ formatCurrency(accountTotals['고정비'] || 0) }}
-          </div>
-          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">통신비 · 공과금 · 구독료</p>
-        </div>
-      </div>
-
-      <div class="ts-card p-4 sm:p-5 flex flex-col justify-between gap-2">
-        <div class="text-[13px] font-bold text-[#8B95A1]">자동차/병원비</div>
-        <div>
-          <div class="text-[20px] sm:text-[24px] font-extrabold font-mono text-[#F9FAFB] tracking-tight tabular-nums truncate">
-            {{ formatCurrency(accountTotals['자동차/병원비'] || 0) }}
-          </div>
-          <p class="text-[13px] text-[#6B7684] mt-0.5 m-0 truncate">주유 · 하이패스 · 병원</p>
-        </div>
+      <div
+        v-if="availableAccounts.length === 0"
+        class="ts-card p-4 sm:p-5 col-span-1 lg:col-span-3 flex flex-col justify-center gap-1"
+      >
+        <div class="text-[14px] font-bold text-[#D1D6DB]">표시할 소비 계좌가 없습니다</div>
+        <p class="text-[13px] text-[#8B95A1] m-0">
+          카테고리 관리에서 계좌의 '소비내역 소비계좌 출력'을 '노출'로 설정해주세요.
+        </p>
       </div>
     </section>
 
@@ -272,52 +335,33 @@ const formatCurrency = (val) => {
       </div>
 
       <form @submit.prevent="handleQuickSubmit" class="grid grid-cols-2 sm:grid-cols-12 gap-2.5">
-        <input
-          v-model="quickForm.transactionDate"
-          type="date"
-          required
-          class="col-span-1 sm:col-span-2 ts-input tabular-nums"
-        />
+        <input v-model="quickForm.transactionDate" type="date" required
+          class="col-span-1 sm:col-span-2 ts-input tabular-nums" />
 
         <select
           v-model="quickForm.accountName"
-          class="col-span-1 sm:col-span-2 ts-input font-bold cursor-pointer"
+          :disabled="availableAccounts.length === 0"
+          class="col-span-1 sm:col-span-2 ts-input font-bold cursor-pointer disabled:opacity-50"
         >
+          <option v-if="availableAccounts.length === 0" value="" disabled>
+            소비 계좌 없음
+          </option>
           <option v-for="acc in availableAccounts" :key="acc.id || acc.name" :value="acc.name">
             {{ acc.name }}
           </option>
         </select>
 
-        <input
-          v-model="quickForm.description"
-          type="text"
-          placeholder="사용처 / 내용 (예: 네이버 올리브유)"
-          required
-          class="col-span-2 sm:col-span-3 ts-input"
-        />
+        <input v-model="quickForm.description" type="text" placeholder="사용처 / 내용 (예: 네이버 올리브유)" required
+          class="col-span-2 sm:col-span-3 ts-input" />
 
-        <input
-          v-model.number="quickForm.amount"
-          type="number"
-          placeholder="금액 (원)"
-          required
-          min="1"
-          class="col-span-1 sm:col-span-2 ts-input font-mono font-bold tabular-nums"
-        />
+        <input v-model.number="quickForm.amount" type="number" placeholder="금액 (원)" required min="1"
+          class="col-span-1 sm:col-span-2 ts-input font-mono font-bold tabular-nums" />
 
-        <input
-          v-model="quickForm.memo"
-          type="text"
-          placeholder="메모 (선택)"
-          class="col-span-1 sm:col-span-2 ts-input"
-        />
+        <input v-model="quickForm.memo" type="text" placeholder="메모 (선택)" class="col-span-1 sm:col-span-2 ts-input" />
 
-        <button
-          type="submit"
-          :disabled="isAddingQuick"
-          class="col-span-2 sm:col-span-1 btn btn--primary"
-        >
-          <span v-if="isAddingQuick" class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+        <button type="submit" :disabled="isAddingQuick" class="col-span-2 sm:col-span-1 btn btn--primary">
+          <span v-if="isAddingQuick"
+            class="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
           <span v-else>추가</span>
         </button>
       </form>
@@ -327,29 +371,21 @@ const formatCurrency = (val) => {
     <!-- [UI 영역 4] 토스 다크 소비 항목(계좌) 필터 칩 바                      -->
     <!-- ================================================================== -->
     <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 select-none">
-      <button
-        @click="activeTab = 'ALL'"
-        :class="[
-          'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 border',
-          activeTab === 'ALL'
-            ? 'bg-[#F9FAFB] text-[#0B0D11] border-[#F9FAFB]'
-            : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
-        ]"
-      >
+      <button @click="activeTab = 'ALL'" :class="[
+        'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 border',
+        activeTab === 'ALL'
+          ? 'bg-[#F9FAFB] text-[#0B0D11] border-[#F9FAFB]'
+          : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
+      ]">
         전체 ({{ transactions.length }})
       </button>
 
-      <button
-        v-for="acc in availableAccounts"
-        :key="acc.id || acc.name"
-        @click="activeTab = acc.name"
-        :class="[
-          'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 border',
-          activeTab === acc.name
-            ? 'bg-[#3182F6] text-white border-[#3182F6]'
-            : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
-        ]"
-      >
+      <button v-for="acc in availableAccounts" :key="acc.id || acc.name" @click="activeTab = acc.name" :class="[
+        'px-4 py-2 rounded-full text-[14px] font-bold transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 border',
+        activeTab === acc.name
+          ? 'bg-[#3182F6] text-white border-[#3182F6]'
+          : 'bg-[#151821] text-[#8B95A1] border-white/[0.08] hover:bg-[#1C202B] hover:text-[#F9FAFB]'
+      ]">
         <span>{{ acc.name }}</span>
         <span class="opacity-85 font-mono text-[13px] tabular-nums">
           {{ formatCurrency(accountTotals[acc.name] || 0) }}
@@ -374,7 +410,7 @@ const formatCurrency = (val) => {
         <div class="text-[14px] font-bold text-[#8B95A1]">
           합계
           <span class="font-extrabold font-mono text-[#64A8FF] tabular-nums ml-1">
-            {{ formatCurrency(filteredTransactions.reduce((s, t) => s + (Number(t.amount) || 0), 0)) }}
+            {{formatCurrency(filteredTransactions.reduce((s, t) => s + (Number(t.amount) || 0), 0))}}
           </span>
         </div>
       </div>
@@ -388,10 +424,7 @@ const formatCurrency = (val) => {
       </div>
       <div v-else-if="filteredTransactions.length === 0" class="py-16 text-center text-[#8B95A1] space-y-3">
         <p class="text-[14px] font-semibold">아직 기록된 소비 내역이 없어요.</p>
-        <button
-          @click="openCreateModal"
-          class="btn btn--secondary"
-        >
+        <button @click="openCreateModal" class="btn btn--secondary">
           새 소비 내역 작성하기
         </button>
       </div>
@@ -399,14 +432,12 @@ const formatCurrency = (val) => {
       <template v-else>
         <!-- [모바일 전용] 토스 다크 가계부 피드 리스트 -->
         <div class="md:hidden divide-y divide-white/[0.06]">
-          <div
-            v-for="item in filteredTransactions"
-            :key="`mob-${item.id}`"
-            class="p-4 bg-[#151821] flex items-center justify-between gap-3"
-          >
+          <div v-for="item in filteredTransactions" :key="`mob-${item.id}`"
+            class="p-4 bg-[#151821] flex items-center justify-between gap-3">
             <div class="min-w-0 flex-1 space-y-1">
               <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-[6px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] shrink-0">
+                <span
+                  class="px-2 py-0.5 rounded-[6px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] shrink-0">
                   {{ item.accountName || '미지정' }}
                 </span>
                 <span class="font-extrabold text-[#F9FAFB] text-[15px] truncate">
@@ -424,16 +455,11 @@ const formatCurrency = (val) => {
                 {{ Number(item.amount || 0).toLocaleString('ko-KR') }}원
               </div>
               <div class="flex items-center justify-end gap-2 text-[13px]">
-                <button
-                  @click="openEditModal(item)"
-                  class="font-bold text-[#8B95A1] hover:text-[#F9FAFB] cursor-pointer"
-                >
+                <button @click="openEditModal(item)"
+                  class="font-bold text-[#8B95A1] hover:text-[#F9FAFB] cursor-pointer">
                   수정
                 </button>
-                <button
-                  @click="handleDelete(item)"
-                  class="font-bold text-[#FF6B76] cursor-pointer"
-                >
+                <button @click="handleDelete(item)" class="font-bold text-[#FF6B76] cursor-pointer">
                   삭제
                 </button>
               </div>
@@ -455,17 +481,15 @@ const formatCurrency = (val) => {
               </tr>
             </thead>
             <tbody class="divide-y divide-white/[0.05]">
-              <tr
-                v-for="item in filteredTransactions"
-                :key="item.id"
-                class="bg-[#151821] hover:bg-[#1C202B] transition-colors group"
-              >
+              <tr v-for="item in filteredTransactions" :key="item.id"
+                class="bg-[#151821] hover:bg-[#1C202B] transition-colors group">
                 <td class="py-3.5 px-5 text-[#8B95A1] font-semibold whitespace-nowrap tabular-nums">
                   {{ formatDateDisplay(item.transactionDate) }}
                 </td>
 
                 <td class="py-3.5 px-4 whitespace-nowrap">
-                  <span class="px-2.5 py-1 rounded-[8px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] inline-block">
+                  <span
+                    class="px-2.5 py-1 rounded-[8px] text-[13px] font-bold bg-[#1C202B] text-[#D1D6DB] border border-white/[0.06] inline-block">
                     {{ item.accountName || '미지정' }}
                   </span>
                 </td>
@@ -478,22 +502,19 @@ const formatCurrency = (val) => {
                   {{ item.memo || '-' }}
                 </td>
 
-                <td class="py-3.5 px-5 text-right font-extrabold font-mono text-[#F9FAFB] text-[15px] whitespace-nowrap tabular-nums">
+                <td
+                  class="py-3.5 px-5 text-right font-extrabold font-mono text-[#F9FAFB] text-[15px] whitespace-nowrap tabular-nums">
                   {{ Number(item.amount || 0).toLocaleString('ko-KR') }}원
                 </td>
 
                 <td class="py-3.5 px-5 text-center whitespace-nowrap">
                   <div class="flex items-center justify-center gap-2.5">
-                    <button
-                      @click="openEditModal(item)"
-                      class="text-[13px] font-bold text-[#8B95A1] hover:text-[#F9FAFB] hover:underline cursor-pointer"
-                    >
+                    <button @click="openEditModal(item)"
+                      class="text-[13px] font-bold text-[#8B95A1] hover:text-[#F9FAFB] hover:underline cursor-pointer">
                       수정
                     </button>
-                    <button
-                      @click="handleDelete(item)"
-                      class="text-[13px] font-bold text-[#FF6B76] hover:underline cursor-pointer"
-                    >
+                    <button @click="handleDelete(item)"
+                      class="text-[13px] font-bold text-[#FF6B76] hover:underline cursor-pointer">
                       삭제
                     </button>
                   </div>
@@ -508,13 +529,7 @@ const formatCurrency = (val) => {
     <!-- ================================================================== -->
     <!-- [UI 영역 6] 소비내역 등록 / 수정 모달 (모바일 바텀시트 지원)          -->
     <!-- ================================================================== -->
-    <TransactionModal
-      :is-open="modalState.isOpen"
-      :mode="modalState.mode"
-      :initial-data="modalState.data"
-      :available-accounts="availableAccounts"
-      @close="closeModal"
-      @submit="handleModalSubmit"
-    />
+    <TransactionModal :is-open="modalState.isOpen" :mode="modalState.mode" :initial-data="modalState.data"
+      :available-accounts="availableAccounts" @close="closeModal" @submit="handleModalSubmit" />
   </div>
 </template>

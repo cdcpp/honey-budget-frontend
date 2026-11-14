@@ -253,11 +253,16 @@ describe('계좌 분류 관리 Backend REST API 연동 테스트', () => {
       accountNumber: '111-222',
       balance: 10000,
       isDashboardVisible: true,
+      isSpendingVisible: true,
       memo: '테스트'
     })
     expect(fetch).toHaveBeenCalledWith('/api/v1/accounts', expect.objectContaining({
       method: 'POST',
       body: expect.stringContaining('"isDashboardVisible":true')
+    }))
+    expect(fetch).toHaveBeenCalledWith('/api/v1/accounts', expect.objectContaining({
+      method: 'POST',
+      body: expect.stringContaining('"isSpendingVisible":true')
     }))
 
     await updateAccount(1, {
@@ -266,11 +271,16 @@ describe('계좌 분류 관리 Backend REST API 연동 테스트', () => {
       categoryId: 1,
       balance: 250000,
       isDashboardVisible: true,
+      isSpendingVisible: false,
       memo: '메모수정'
     })
     expect(fetch).toHaveBeenCalledWith('/api/v1/accounts/1', expect.objectContaining({
       method: 'PUT',
       body: expect.stringContaining('"balance":250000')
+    }))
+    expect(fetch).toHaveBeenCalledWith('/api/v1/accounts/1', expect.objectContaining({
+      method: 'PUT',
+      body: expect.stringContaining('"isSpendingVisible":false')
     }))
 
     await depositAccount(1, 50000)

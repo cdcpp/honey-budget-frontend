@@ -432,6 +432,16 @@
                   >
                     {{ acc.isDashboardVisible ? '대시보드 노출' : '대시보드 숨김' }}
                   </span>
+                  <span
+                    :class="[
+                      'px-2 py-0.5 rounded-full text-[13px] font-bold border',
+                      acc.isSpendingVisible
+                        ? 'bg-[#22C55E]/15 text-[#4ADE80] border-[#22C55E]/30'
+                        : 'bg-[#151821] text-[#6B7684] border-white/[0.06]'
+                    ]"
+                  >
+                    {{ acc.isSpendingVisible ? '소비계좌 노출' : '소비계좌 숨김' }}
+                  </span>
                 </div>
                 <p class="text-[13px] text-[#8B95A1] mt-1 flex items-center gap-1.5 m-0">
                   <span class="font-bold text-[#D1D6DB]">{{ acc.institutionName }}</span>

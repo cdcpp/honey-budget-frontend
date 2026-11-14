@@ -18,7 +18,7 @@ export { DEFAULT_ACCOUNT_PRESETS }
 
 export function useAccountTransactions() {
   // 카테고리 관리 탭에 등록된 계좌 목록과 연동하기 위해 전역 분류 트리 참조
-  const { groups } = useAccountClassification()
+  const { groups, loadHierarchy } = useAccountClassification()
 
   // ==========================================================================
   // [SECTION 1] Reactive State (반응형 상태 변수 - ref)
@@ -53,43 +53,31 @@ export function useAccountTransactions() {
 
   /**
    * [선택 가능한 소비 계좌 목록]
-   * - 1순위: '카테고리 관리'에서 사용자가 등록한 계좌들
-   * - 2순위: 엑셀 기본 3대 지출 프리셋('생활비(식비)', '고정비', '자동차/병원비') 병합 (중복 제외)
+   * - '카테고리 관리'에 등록된 계좌 중 사용 중(useYn !== false)이며
+   *   '월별 소비내역 소비계좌 출력(isSpendingVisible === true)'이 활성화된 계좌만 반환
    */
   const availableAccounts = computed(() => {
     const list = []
     const seen = new Set()
 
-    // 1. 카테고리 관리에 등록된 계좌 수집
     for (const grp of groups.value || []) {
       for (const cat of grp.categories || []) {
         for (const acc of cat.accounts || []) {
+          if (acc.useYn === false || !acc.isSpendingVisible) continue
           const name = acc.accountName
           if (!seen.has(name)) {
             seen.add(name)
             list.push({
               id: acc.id,
               name,
-              categoryName: cat.categoryName,
-              groupName: grp.categoryGroupName,
+              institutionName: acc.institutionName || '',
+              categoryName: cat.categoryName || '',
+              groupName: grp.categoryGroupName || '',
+              isSpendingVisible: true,
               badgeColor: 'bg-[#F7F6F2] text-[#141413] border-[#141413]/15'
             })
           }
         }
-      }
-    }
-
-    // 2. 엑셀 3대 기본 프리셋 보충 (동일 이름이 없을 때만 추가)
-    for (const p of DEFAULT_ACCOUNT_PRESETS) {
-      if (!seen.has(p.name)) {
-        seen.add(p.name)
-        list.push({
-          id: null,
-          name: p.name,
-          categoryName: '기본 분류',
-          groupName: '지출',
-          badgeColor: p.badgeColor
-        })
       }
     }
 
@@ -144,13 +132,27 @@ export function useAccountTransactions() {
     loadTransactions()
   })
 
+  // 소비계좌 목록 변경 시 현재 선택된 탭 계좌가 숨김 처리되었다면 'ALL'로 복귀
+  watch(availableAccounts, (list) => {
+    if (activeTab.value !== 'ALL' && !list.some((a) => a.name === activeTab.value)) {
+      activeTab.value = 'ALL'
+    }
+  })
+
+  const initTransactions = () => {
+    if (!groups.value?.length && typeof loadHierarchy === 'function') {
+      loadHierarchy()
+    }
+    loadTransactions()
+  }
+
   // 컴포넌트 마운트 시(또는 단위 테스트 호출 시) 최초 1회 로드
   if (getCurrentInstance()) {
     onMounted(() => {
-      loadTransactions()
+      initTransactions()
     })
   } else {
-    loadTransactions()
+    initTransactions()
   }
 
   // ==========================================================================

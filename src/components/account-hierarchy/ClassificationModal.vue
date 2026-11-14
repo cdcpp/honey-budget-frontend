@@ -179,22 +179,26 @@
             />
           </div>
 
-          <!-- 대시보드 잔액관리 노출여부 (isDashboardVisible: Boolean, default false) -->
-          <div class="p-3.5 rounded-[14px] bg-[#1C202B] border border-white/[0.06] flex items-center justify-between gap-4">
+          <!-- 노출 여부 설정 (isDashboardVisible / isSpendingVisible: Boolean, default false) -->
+          <div
+            v-for="field in visibilityToggleFields"
+            :key="field.key"
+            class="p-3.5 rounded-[14px] bg-[#1C202B] border border-white/[0.06] flex items-center justify-between gap-4"
+          >
             <div>
-              <div class="text-[14px] font-bold text-[#F9FAFB]">대시보드 잔액관리 노출</div>
+              <div class="text-[14px] font-bold text-[#F9FAFB]">{{ field.title }}</div>
               <p class="text-[13px] text-[#8B95A1] mt-0.5 m-0">
-                활성화하면 대시보드 잔액 현황 계좌로 출력됩니다.
+                {{ field.description }}
               </p>
             </div>
 
             <div class="inline-flex rounded-[10px] bg-[#0B0D11] p-1 border border-white/[0.08] shrink-0">
               <button
                 type="button"
-                @click="accountForm.isDashboardVisible = true"
+                @click="accountForm[field.key] = true"
                 :class="[
                   'px-3 py-1.5 rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer border-0',
-                  accountForm.isDashboardVisible
+                  accountForm[field.key]
                     ? 'bg-[#3182F6] text-white'
                     : 'bg-transparent text-[#8B95A1] hover:text-[#F9FAFB]'
                 ]"
@@ -203,10 +207,10 @@
               </button>
               <button
                 type="button"
-                @click="accountForm.isDashboardVisible = false"
+                @click="accountForm[field.key] = false"
                 :class="[
                   'px-3 py-1.5 rounded-[8px] text-[13px] font-bold transition-colors cursor-pointer border-0',
-                  !accountForm.isDashboardVisible
+                  !accountForm[field.key]
                     ? 'bg-[#242938] text-[#F9FAFB]'
                     : 'bg-transparent text-[#8B95A1] hover:text-[#F9FAFB]'
                 ]"
@@ -359,7 +363,21 @@ const categoryForm = ref({
  * 3. 소분류 계좌 입력 폼 데이터 (Account.java 필드 매핑)
  * - balance            : 계좌 현재 잔액 (기본 0)
  * - isDashboardVisible : 대시보드 잔액관리 노출 여부 (기본 false)
+ * - isSpendingVisible  : 월별 소비내역 소비계좌 출력 여부 (기본 false)
  */
+const visibilityToggleFields = [
+  {
+    key: 'isDashboardVisible',
+    title: '대시보드 잔액관리 노출',
+    description: '활성화하면 대시보드 잔액 현황 계좌로 출력됩니다.'
+  },
+  {
+    key: 'isSpendingVisible',
+    title: '소비내역 소비계좌 출력',
+    description: '활성화하면 월별 소비내역 화면의 소비 계좌로 출력됩니다.'
+  }
+]
+
 const accountForm = ref({
   categoryId: null,
   accountName: '',
@@ -367,6 +385,7 @@ const accountForm = ref({
   accountNumber: '',
   balance: 0,
   isDashboardVisible: false,
+  isSpendingVisible: false,
   useYn: true,
   memo: ''
 })
@@ -515,6 +534,7 @@ const initFormData = async () => {
       accountNumber: d.accountNumber || '',
       balance: d.balance !== undefined && d.balance !== null ? Number(d.balance) : 0,
       isDashboardVisible: Boolean(d.isDashboardVisible ?? d.dashboardVisible ?? false),
+      isSpendingVisible: Boolean(d.isSpendingVisible ?? d.spendingVisible ?? false),
       useYn: d.useYn !== undefined ? d.useYn : true,
       memo: d.memo || ''
     }
@@ -557,7 +577,8 @@ const handleSubmit = async () => {
         ...accountForm.value,
         accountNumber: accountForm.value.accountNumber || '-',
         balance: parsedBalance,
-        isDashboardVisible: Boolean(accountForm.value.isDashboardVisible)
+        isDashboardVisible: Boolean(accountForm.value.isDashboardVisible),
+        isSpendingVisible: Boolean(accountForm.value.isSpendingVisible)
       })
     } else if (isTransactionMode.value) {
       const amt = Number(transactionAmount.value)

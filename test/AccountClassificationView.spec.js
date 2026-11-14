@@ -93,4 +93,45 @@ describe('AccountClassificationView.vue Component UI Test (Header Delete Buttons
 
     expect(wrapper.text()).toContain('새 그룹 등록')
   })
+
+  it('3. 계좌 등록 모달에서 소비내역 소비계좌 출력 여부(isSpendingVisible) 설정 및 저장 검증', async () => {
+    const wrapper = mount(AccountClassificationView)
+    await flushPromises()
+
+    const sec3 = wrapper.findAll('section')[2]
+    const createAccountBtn = sec3.findAll('button').find(b => b.text().includes('등록'))
+    await createAccountBtn.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('새 계좌 등록')
+    expect(wrapper.text()).toContain('대시보드 잔액관리 노출')
+    expect(wrapper.text()).toContain('소비내역 소비계좌 출력')
+
+    const dialog = wrapper.find('[role="dialog"]')
+    const textInputs = dialog.findAll('input[type="text"]')
+    await textInputs[0].setValue('토스 생활비 통장')
+    await textInputs[1].setValue('토스뱅크')
+
+    const numberInput = dialog.find('input[type="number"]')
+    await numberInput.setValue('300000')
+
+    // 두 번째 토글 그룹('소비내역 소비계좌 출력')의 '노출' 버튼 클릭
+    const exposeButtons = dialog.findAll('button').filter(b => b.text().trim() === '노출')
+    expect(exposeButtons.length).toBe(2)
+    await exposeButtons[1].trigger('click')
+
+    await dialog.find('form').trigger('submit')
+    await flushPromises()
+
+    const postCall = fetch.mock.calls.find(
+      ([url, opts]) => url === '/api/v1/accounts' && opts?.method === 'POST'
+    )
+    expect(postCall).toBeTruthy()
+    const payload = JSON.parse(postCall[1].body)
+    expect(payload.accountName).toBe('토스 생활비 통장')
+    expect(payload.institutionName).toBe('토스뱅크')
+    expect(payload.balance).toBe(300000)
+    expect(payload.isDashboardVisible).toBe(false)
+    expect(payload.isSpendingVisible).toBe(true)
+  })
 })
